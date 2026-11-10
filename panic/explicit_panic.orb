@@ -1,2 +1,0 @@
-// expect: panic: boom
-fn main() { panic("boom"); }

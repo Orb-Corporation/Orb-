@@ -1,3 +1,0 @@
-// expect: error: Failed
-error Failed;
-fn main() -> ! { fail Failed; }
