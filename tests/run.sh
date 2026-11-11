@@ -36,6 +36,11 @@ for f in tests/panic/*.orb; do
     if grep -qF -- "$want" $tmp/stderr.txt; then ok; else bad "$f (stderr)" "wanted: $want / got: $(head -1 $tmp/stderr.txt)"; fi
 done
 
+# VS Code extension (needs node)
+if command -v node >/dev/null 2>&1; then
+    if node --test vscode-orb/test/lib.test.js vscode-orb/test/extension.mock.test.js > $tmp/node.txt 2>&1; then ok; else bad "vs code extension tests" "$(grep -E 'not ok' $tmp/node.txt | head -3)"; fi
+fi
+
 # command line interface
 $ORB version | grep -q "Orb!" && ok || bad "orb version"
 $ORB check examples/hello.orb | grep -q ok && ok || bad "orb check"

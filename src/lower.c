@@ -895,6 +895,7 @@ static void lw_call(Node *n, Opnd *r0, Opnd *r1, Addr *sret) {
     (void)i;
     if (d0 >= 0) *r0 = R(d0);
     if (d1 >= 0) *r1 = R(d1);
+    if (callee && callee->is_extern && rc == TC_SCALAR && ty_is_int(rt) && ty_bits(rt) < 64) *r0 = norm(*r0, rt);
     if (rc == TC_MEM) *r0 = lea(*sret);
 }
 

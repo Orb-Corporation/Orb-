@@ -165,7 +165,7 @@ struct Func {
     Module *mod;
     Type *type;                 // TY_FUNC
     char *asm_name;
-    bool is_extern, checked, sig_done, queued;
+    bool is_extern, checked, sig_done, queued, winabi;
     VEC(Sym *) tparams;
     int id;
 };
@@ -199,6 +199,10 @@ void sema_run(Module *main_mod);
 Sym *core_sym(const char *name);                 // lookup pub symbol in core module
 const char *std_source(const char *name);        // embedded std library lookup (generated)
 const char *std_override_dir(void);
-extern const char *g_std_dir;                    // optional directory override
+extern const char *g_std_dir;
+enum { TGT_LINUX, TGT_MACOS, TGT_WINDOWS };
+extern int g_target;                             // compilation target
+extern int g_host;                               // platform the compiler runs on
+const char *target_name(int t);                    // optional directory override
 
 #endif

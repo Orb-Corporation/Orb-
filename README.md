@@ -18,12 +18,12 @@ fn main() {
 
 ## Quick start
 
-Requirements: Linux x86-64, a C compiler (to build the compiler), and GNU binutils
-(`as` and `ld`, needed when *using* the compiler).
+Requirements: a C compiler (to build the compiler) plus the platform's assembler/linker:
+GNU binutils on Linux, Xcode command line tools on macOS, MinGW-w64 on Windows.
 
 ```sh
 make            # builds build/orb
-make test       # 78 checks (every program is run with and without optimisation)
+make test       # 79 checks (every program is run with and without optimisation)
 sudo make install        # optional: installs `orb` to /usr/local/bin
 
 orb run examples/hello.orb
@@ -39,12 +39,29 @@ orb version
 | `orb run f.orb [args...]` | compile to a temporary executable, run it, propagate its exit code |
 | `orb check f.orb` | parse and type-check only |
 | `orb new name` | create a new project directory |
+| `orb doctor` | check the toolchain, compile and run a test program |
 | `orb version` | print the version |
 
-Options: `--unchecked` (remove bounds / division checks), `--no-opt` (disable IR optimiser),
+Options: `--target linux|macos|windows`, `--unchecked` (remove bounds / division checks), `--no-opt` (disable IR optimiser),
 `-S` (print assembly), `--emit-ir` (print the intermediate representation),
 `--std <dir>` (use an external standard library directory; useful when hacking on `std/`).
 Extra `.o` / `.a` files after the source file are passed to the linker (for `extern fn`; there is no libc).
+
+## Platforms and editors
+
+| system | status |
+|---|---|
+| Linux x86-64 | fully supported and tested |
+| Windows | **via WSL2** (recommended, one-step setup script) or **native `.exe`** (experimental) |
+| macOS (Intel, and Apple Silicon through Rosetta 2) | experimental native target |
+
+The Windows and macOS targets were written and checked (assembly generated for every test program and verified to
+assemble) on a Linux-only machine and have **not been executed on real Windows/macOS hardware**; `orb doctor`
+tells you whether your machine works. Details: [docs/PLATFORMS.md](docs/PLATFORMS.md).
+
+**Visual Studio Code**: install `dist/orb-lang-0.1.0.vsix` for highlighting, snippets, ▶ Run / Build / Check,
+inline compiler errors, tasks and WSL support on Windows. A Dev Container is included for Codespaces/Docker.
+Details: [docs/VSCODE.md](docs/VSCODE.md).
 
 ## The language in one page
 
@@ -103,7 +120,7 @@ Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 * Compiler: lexer → parser → type checker → IR → optimiser → register allocator → x86-64 assembly.
 * Diagnostics with source line, caret and "did you mean" suggestions.
 * Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`.
-* Tests: 78 checks + a differential fuzzer (`python3 tests/fuzz.py 500`).
+* Tests: 79 checks + a differential fuzzer (`python3 tests/fuzz.py 500`).
 
 ## Performance (measured, reproducible)
 
