@@ -2,10 +2,10 @@
 
 **Native performance. Minimal complexity.** — a small statically typed systems language by Orb Technologies.
 
-Orb! compiles `.orb` source files straight to native x86-64 Linux executables. There is no
-virtual machine, no garbage collector and no libc: the runtime and standard library are
-written in Orb! itself and talk to the kernel through system calls. A hello-world binary is
-about 10 KB.
+Orb! compiles `.orb` source files to native x86-64 executables. The Linux target has no
+virtual machine, garbage collector or libc: its runtime and standard library are written in
+Orb! and use direct system calls. Windows and macOS targets are experimental and use their
+platform-specific system interfaces and toolchains. A Linux hello-world binary is about 10 KB.
 
 ```orb
 fn main() {
@@ -23,7 +23,8 @@ GNU binutils on Linux, Xcode command line tools on macOS, MinGW-w64 on Windows.
 
 ```sh
 make            # builds build/orb
-make test       # 79 checks (every program is run with and without optimisation)
+make test       # regression suite; VS Code tests run when Node.js is installed
+python3 tests/fuzz.py 500  # separate differential fuzzer (not part of make test)
 sudo make install        # optional: installs `orb` to /usr/local/bin
 
 orb run examples/hello.orb
@@ -45,7 +46,8 @@ orb version
 Options: `--target linux|macos|windows`, `--unchecked` (remove bounds / division checks), `--no-opt` (disable IR optimiser),
 `-S` (print assembly), `--emit-ir` (print the intermediate representation),
 `--std <dir>` (use an external standard library directory; useful when hacking on `std/`).
-Extra `.o` / `.a` files after the source file are passed to the linker (for `extern fn`; there is no libc).
+Extra `.o` / `.a` files after the source file are passed to the linker (for `extern fn`). Runtime
+dependencies differ by target; see [platform notes](docs/PLATFORMS.md).
 
 ## Platforms and editors
 
@@ -117,10 +119,10 @@ Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 * Error handling: `T!`, `fail`, `try`, `catch`.
 * Generic functions and generic structs (monomorphised, inferred from arguments).
 * Method-call syntax for any function: `list.push(3)` is `push(&list, 3)`.
-* Compiler: lexer → parser → type checker → IR → optimiser → register allocator → x86-64 assembly.
+* Compiler: lexer → parser → type checker → IR → optimiser → register allocator → target-specific x86-64 assembly.
 * Diagnostics with source line, caret and "did you mean" suggestions.
-* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`.
-* Tests: 79 checks + a differential fuzzer (`python3 tests/fuzz.py 500`).
+* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`, plus target-specific OS layers.
+* Tests: `make test` runs the regression fixtures and CLI checks; VS Code extension tests run when Node.js is installed. The differential fuzzer is separate: `python3 tests/fuzz.py 500`.
 
 ## Performance (measured, reproducible)
 
@@ -142,7 +144,7 @@ they are.
 
 ## Known limitations (honest list)
 
-* **Linux x86-64 only.** The compiler writes assembly text and relies on GNU `as` and `ld`.
+* **All current code-generation targets are x86-64.** Linux is fully tested. Native Windows (MSYS2/MinGW) and macOS targets are experimental and have not been executed on real Windows/macOS hardware. On Apple Silicon, macOS runs the x86-64 output through Rosetta 2; a native arm64 backend is not implemented.
 * No debug information, no incremental compilation.
 * The optimiser is basic: constant propagation, strength reduction, dead-code elimination,
   jump threading, linear-scan register allocation. No inlining, no loop optimisations, no
