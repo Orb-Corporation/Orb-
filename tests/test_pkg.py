@@ -1,8 +1,11 @@
+import argparse
 import importlib.util
+import json
 import io
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 from pathlib import Path
 
@@ -49,6 +52,62 @@ class PackageManagerTests(unittest.TestCase):
             bundle.writestr("repo/src/../../escape.orb", "unsafe")
         with self.assertRaises(orb_pkg.PackageError):
             orb_pkg.source_files(archive.getvalue(), "network")
+
+    def test_source_files_only_accepts_safe_module_filenames(self):
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as bundle:
+            bundle.writestr("repo/src/network.orb", "pub fn connect() {}")
+            bundle.writestr("repo/src/bad-name.orb", "not a valid module filename")
+            bundle.writestr("repo/src/nested/helper.orb", "not a sibling module")
+        files = orb_pkg.source_files(archive.getvalue(), "network")
+        self.assertEqual(sorted(files), ["network.orb"])
+
+    def test_install_reuses_lock_commit_but_update_resolves_again(self):
+        old = Path.cwd()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = {
+                "name": "test",
+                "version": "0.1.0",
+                "dependencies": {"network": {"repository": "owner/network", "ref": "main"}},
+            }
+            locked_sha = "a" * 40
+            lock = {
+                "lockfile_version": 1,
+                "packages": {
+                    "network": {
+                        "repository": "owner/network",
+                        "ref": "main",
+                        "resolved_ref": locked_sha,
+                        "files": {},
+                    }
+                },
+            }
+            (root / "orb.json").write_text(json.dumps(manifest), encoding="utf-8")
+            (root / "orb.lock.json").write_text(json.dumps(lock), encoding="utf-8")
+            seen = []
+
+            def fake_install(project, module, repository, ref, current_lock):
+                seen.append(ref)
+                return {
+                    "module": module,
+                    "repository": repository,
+                    "ref": ref,
+                    "resolved_ref": ref,
+                    "files": {},
+                }
+
+            try:
+                os.chdir(root)
+                with patch.object(orb_pkg, "project_root", return_value=root), patch.object(
+                    orb_pkg, "install_one", side_effect=fake_install
+                ):
+                    self.assertEqual(orb_pkg.cmd_sync(argparse.Namespace(command="install", module=None)), 0)
+                    self.assertEqual(seen[-1], locked_sha)
+                    self.assertEqual(orb_pkg.cmd_sync(argparse.Namespace(command="update", module=None)), 0)
+                    self.assertEqual(seen[-1], "main")
+            finally:
+                os.chdir(old)
 
     def test_init_creates_manifest_and_lockfile(self):
         old = Path.cwd()
