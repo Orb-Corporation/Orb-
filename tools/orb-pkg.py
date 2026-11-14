@@ -130,24 +130,37 @@ def source_files(archive: bytes, module: str) -> dict[str, bytes]:
     except zipfile.BadZipFile as exc:
         raise PackageError("GitHub returned an invalid ZIP archive") from exc
 
-    entries: list[tuple[zipfile.ZipInfo, PurePosixPath]] = []
+    raw_entries: list[tuple[zipfile.ZipInfo, PurePosixPath]] = []
     for info in bundle.infolist():
         if info.is_dir():
             continue
         path = safe_archive_path(info.filename)
         if info.file_size > MAX_TOTAL_SOURCE:
             raise PackageError(f"archive entry is too large: {info.filename}")
-        entries.append((info, path))
+        raw_entries.append((info, path))
+
+    if not raw_entries:
+        raise PackageError("source archive is empty")
+
+    # GitHub zipballs contain one generated top-level directory.
+    top_levels = {path.parts[0] for _, path in raw_entries}
+    has_wrapper = len(top_levels) == 1 and all(len(path.parts) > 1 for _, path in raw_entries)
+    entries: list[tuple[zipfile.ZipInfo, PurePosixPath]] = []
+    for info, path in raw_entries:
+        relative = PurePosixPath(*path.parts[1:]) if has_wrapper else path
+        entries.append((info, relative))
 
     candidates = [
         (info, path) for info, path in entries
-        if path.name == f"{module}.orb" and len(path.parts) <= 3
+        if path.name == f"{module}.orb"
+        and (len(path.parts) == 1 or path.parts == ("src", f"{module}.orb"))
     ]
     if not candidates:
         raise PackageError(
             f"repository has no {module}.orb module file; expected it at the repository root or in src/"
         )
-    candidates.sort(key=lambda pair: (len(pair[1].parts), "src" not in pair[1].parts))
+    if len(candidates) > 1:
+        raise PackageError(f"repository contains multiple entry points for module {module!r}")
     _, entry_path = candidates[0]
     parent = entry_path.parent
     output: dict[str, bytes] = {}
