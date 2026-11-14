@@ -30,7 +30,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           asset_list="$(gh release view v0.2.1.1 --json assets --jq '.assets[].name')"
-          if printf '%s\\n' "$asset_list" | grep -Fxq "orb-lang-0.1.0.vsix"; then
+          if printf '%s\n' "$asset_list" | grep -Fxq "orb-lang-0.1.0.vsix"; then
             gh release delete-asset v0.2.1.1 "orb-lang-0.1.0.vsix" --yes
           fi
           gh release upload v0.2.1.1 "build/dist/orb-lang-0.2.1.1.vsix" --clobber
