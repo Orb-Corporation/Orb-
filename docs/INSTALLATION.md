@@ -27,7 +27,7 @@ irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | ie
 ```
 
 This downloads and opens the graphical Orb! Setup wizard. You can also download
-`Orb-Setup-0.2.1.1.exe` from the latest GitHub Release.
+`Orb-Setup-0.3.0.exe` from the latest GitHub Release.
 
 ## Component selection
 
