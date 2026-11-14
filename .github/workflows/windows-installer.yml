@@ -76,8 +76,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Smoke-test the package-manager CLI
-        shell: msys2 {0}
-        run: ./build/orb.exe pkg --help
+        shell: pwsh
+        run: .\build\orb.exe pkg --help
       - name: Package the VS Code extension
         shell: pwsh
         run: python tools/package-vsix.py build/dist
