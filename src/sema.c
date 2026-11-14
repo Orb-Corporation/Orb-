@@ -606,6 +606,10 @@ static Module *find_module(Module *from, const char *name, Pos p) {
     char *cand = xsprintf("%s/%s.orb", dir_of(from->path), name);
     char *text = std_only ? NULL : read_file_text(cand);
     if (text) return load_module_text(cand, name, text, true);
+    if (!strcmp(name, "web") && g_target != TGT_WASM) {
+        diag_error(p, "the standard module `web` talks to a browser: build with --target wasm (see docs/WEB.md)");
+        return NULL;
+    }
     const char *real = std_file_for(name);
     if (g_std_dir) {
         cand = xsprintf("%s/%s.orb", g_std_dir, real);
@@ -713,7 +717,7 @@ static Module *load_module_text(const char *path, const char *name, char *text, 
 
 int g_target = TGT_LINUX;
 int g_host = TGT_LINUX;
-const char *target_name(int t) { return t == TGT_MACOS ? "macos" : t == TGT_WINDOWS ? "windows" : "linux"; }
+const char *target_name(int t) { return t == TGT_MACOS ? "macos" : t == TGT_WINDOWS ? "windows" : t == TGT_WASM ? "wasm" : "linux"; }
 
 Module *load_std_module(const char *name) {
     if (g_std_dir) {
