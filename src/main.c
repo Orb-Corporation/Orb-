@@ -1,4 +1,4 @@
-// Orb! compiler driver: orb build | run | check | doctor | new | version
+// Orb! compiler driver: build | run | check | doctor | new | pkg | version
 #include "sema.h"
 #include "ir.h"
 #include "platform.h"
@@ -360,6 +360,7 @@ int main(int argc, char **argv) {
         return cmd_new(argv[2]);
     }
     if (!strcmp(cmd, "doctor")) return cmd_doctor();
+    if (!strcmp(cmd, "pkg")) return cmd_pkg(argc, argv, argv[0]);
     bool build = !strcmp(cmd, "build"), run = !strcmp(cmd, "run"), check = !strcmp(cmd, "check");
     if (!build && !run && !check) { fprintf(stderr, "orb: unknown command '%s'\n\n", cmd); usage(); return 1; }
     Opts o = {0};
