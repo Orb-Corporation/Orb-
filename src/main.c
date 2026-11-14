@@ -362,7 +362,7 @@ static int install_dependency(const char *name, const char *url) {
     }
     for (const unsigned char *p = (const unsigned char *)url; *p; p++) {
         if (*p <= 0x20 || *p == 0x7f || *p == 0x22 || *p == 0x5c) {
-            fprintf(stderr, "orb: dependency URL contains an unsupported character\\n");
+            fprintf(stderr, "orb: dependency URL contains an unsupported character\n");
             return 1;
         }
     }
