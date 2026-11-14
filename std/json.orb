@@ -1,3 +1,5 @@
+use vec;
+
 // json - strict JSON syntax validation and JSON string encoding.
 // The validator accepts the complete JSON grammar; it does not build a DOM.
 //
@@ -94,70 +96,67 @@ fn parse_number(p: *Parser) -> bool {
     return true;
 }
 
-fn parse_value(p: *Parser, depth: i64) -> bool;
-
-fn parse_array(p: *Parser, depth: i64) -> bool {
-    p.pos += 1; // [
-    skip_space(p);
-    if p.pos < p.source.len && p.source[p.pos] == ']' {
-        p.pos += 1;
-        return true;
-    }
-    loop {
-        if !parse_value(p, depth + 1) { return false; }
-        skip_space(p);
-        if p.pos >= p.source.len { return false; }
-        if p.source[p.pos] == ']' {
-            p.pos += 1;
-            return true;
-        }
-        if p.source[p.pos] != ',' { return false; }
-        p.pos += 1;
-        skip_space(p);
-        // A comma must be followed by another value, not by ']'.
-        if p.pos < p.source.len && p.source[p.pos] == ']' { return false; }
-    }
-}
-
-fn parse_object(p: *Parser, depth: i64) -> bool {
-    p.pos += 1; // {
-    skip_space(p);
-    if p.pos < p.source.len && p.source[p.pos] == '}' {
-        p.pos += 1;
-        return true;
-    }
-    loop {
-        if !parse_string(p) { return false; }
-        skip_space(p);
-        if p.pos >= p.source.len || p.source[p.pos] != ':' { return false; }
-        p.pos += 1;
-        skip_space(p);
-        if !parse_value(p, depth + 1) { return false; }
-        skip_space(p);
-        if p.pos >= p.source.len { return false; }
-        if p.source[p.pos] == '}' {
-            p.pos += 1;
-            return true;
-        }
-        if p.source[p.pos] != ',' { return false; }
-        p.pos += 1;
-        skip_space(p);
-        if p.pos < p.source.len && p.source[p.pos] == '}' { return false; }
-    }
-}
-
 fn parse_value(p: *Parser, depth: i64) -> bool {
     if depth > 256 { return false; }
     skip_space(p);
     if p.pos >= p.source.len { return false; }
     c := p.source[p.pos];
+
     if c == '"' { return parse_string(p); }
-    if c == '{' { return parse_object(p, depth); }
-    if c == '[' { return parse_array(p, depth); }
     if c == 't' { return consume(p, "true"); }
     if c == 'f' { return consume(p, "false"); }
     if c == 'n' { return consume(p, "null"); }
     if c == '-' || digit(c) { return parse_number(p); }
+
+    if c == '[' {
+        p.pos += 1;
+        skip_space(p);
+        if p.pos < p.source.len && p.source[p.pos] == ']' {
+            p.pos += 1;
+            return true;
+        }
+        loop {
+            if !parse_value(p, depth + 1) { return false; }
+            skip_space(p);
+            if p.pos >= p.source.len { return false; }
+            if p.source[p.pos] == ']' {
+                p.pos += 1;
+                return true;
+            }
+            if p.source[p.pos] != ',' { return false; }
+            p.pos += 1;
+            skip_space(p);
+            if p.pos < p.source.len && p.source[p.pos] == ']' { return false; }
+        }
+    }
+
+    if c == '{' {
+        p.pos += 1;
+        skip_space(p);
+        if p.pos < p.source.len && p.source[p.pos] == '}' {
+            p.pos += 1;
+            return true;
+        }
+        loop {
+            if !parse_string(p) { return false; }
+            skip_space(p);
+            if p.pos >= p.source.len || p.source[p.pos] != ':' { return false; }
+            p.pos += 1;
+            skip_space(p);
+            if !parse_value(p, depth + 1) { return false; }
+            skip_space(p);
+            if p.pos >= p.source.len { return false; }
+            if p.source[p.pos] == '}' {
+                p.pos += 1;
+                return true;
+            }
+            if p.source[p.pos] != ',' { return false; }
+            p.pos += 1;
+            skip_space(p);
+            if p.pos < p.source.len && p.source[p.pos] == '}' { return false; }
+        }
+    }
+
     return false;
 }
 
