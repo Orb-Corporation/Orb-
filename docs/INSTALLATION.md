@@ -27,7 +27,7 @@ irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | ie
 ```
 
 This downloads and opens the graphical Orb! Setup wizard. You can also download
-`Orb-Setup-0.2.1.1.exe` from the latest GitHub Release.
+`Orb-Setup-0.3.0.exe` from the latest GitHub Release.
 
 ## Component selection
 
@@ -60,7 +60,11 @@ orb version
 orb doctor
 orb new hello
 orb run hello/main.orb
+cd hello
+orb pkg init
 ```
+
+The package manager (`orb pkg`) requires Python 3.10 or newer. The compiler and standard library do not require Python at runtime; Python is used only by the package-management helper.
 
 The compiler itself does not need a package manager. Native Windows compilation uses MinGW-w64; Linux
 and macOS use their host assembler/linker as described in [PLATFORMS.md](PLATFORMS.md). WebAssembly
