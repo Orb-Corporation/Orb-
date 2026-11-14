@@ -115,7 +115,10 @@ function hover(text, offset) {
   if (BUILTINS[name]) return BUILTINS[name];
   if (MODULES[name]) return 'module ' + name + ' — ' + MODULES[name].detail;
   if (KEYWORD_DOCS[name]) return KEYWORD_DOCS[name];
-  const left = source.slice(0, offset);
+  const beforeOffset = source.slice(0, offset);
+  const currentWord = /[A-Za-z_][A-Za-z0-9_]*$/.exec(beforeOffset);
+  const wordStart = currentWord ? offset - currentWord[0].length : offset;
+  const left = source.slice(0, wordStart);
   const moduleMatch = /([A-Za-z_][A-Za-z0-9_]*)\.$/.exec(left);
   if (moduleMatch && MODULES[moduleMatch[1]] && MODULES[moduleMatch[1]].members.includes(name)) {
     const module = moduleMatch[1];
