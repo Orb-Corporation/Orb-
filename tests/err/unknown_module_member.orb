@@ -1,0 +1,6 @@
+// expect: module 'math' has no member 'sqrtt' (did you mean 'sqrt'?)
+use math;
+
+fn main() {
+    println(math.sqrtt(4.0));
+}
