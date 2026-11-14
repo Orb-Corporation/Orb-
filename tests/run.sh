@@ -57,6 +57,9 @@ else
 fi
 
 # command line interface
+if command -v python3 >/dev/null 2>&1 && python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 10))'; then
+    $ORB pkg --help > /dev/null && ok || bad "orb pkg dispatch"
+fi
 $ORB version | grep -q "Orb!" && ok || bad "orb version"
 $ORB check examples/hello.orb | grep -q ok && ok || bad "orb check"
 $ORB run examples/hello.orb | grep -q "Hello, Orb" && ok || bad "orb run"
