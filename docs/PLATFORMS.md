@@ -31,13 +31,15 @@ orb doctor
 
 ### Graphical installer
 
-Download `Orb-Setup-0.2.0.exe` from the latest successful
-[Windows installer workflow](https://github.com/YunaBugendai/orb-web-library/actions/workflows/windows-installer.yml).
-The wizard installs the compiler and lets you select the VS Code extension, examples, offline
-documentation and editable source files. It can also add Orb! to your current user's PATH.
+Download `Orb-Setup-0.2.1.1.exe` from the latest GitHub Release. The wizard installs the compiler and
+lets you select the VS Code extension, examples, offline documentation and editable source files.
+The MinGW-w64 task is selected by default: it reuses a working MinGW toolchain if present, or installs
+MSYS2 for the current user, adds the UCRT64 GCC toolchain, and updates the current user's PATH. You can
+deselect it to skip native build tools. Orb! itself can still compile to WebAssembly without MinGW.
 
 The standard modules and WebAssembly browser runtime are embedded in the compiler; they are not
-separate installation components.
+separate installation components. MSYS2 is maintained independently from Orb! and remains installed
+when Orb! is uninstalled.
 
 ### Recommended for running programs: WSL2
 
@@ -54,8 +56,11 @@ Tip: for speed keep projects inside the WSL file system (`\\wsl$\Ubuntu\home\you
 
 ### Native Windows (experimental)
 
-The installer includes a native x86-64 compiler build. The Windows code-generation target is still
-experimental. For a more predictable development environment, use WSL2 as described above.
+The installer includes a native x86-64 compiler build. MinGW-w64 provides the `as` assembler and `gcc`
+linker driver. If the toolchain task is selected, the installer uses the official MSYS2 installer and
+its published SHA-256 checksum, then installs the UCRT64 GCC package. MSYS2 recommends UCRT64 for new
+users. The Windows code-generation target is still experimental; for a more predictable development
+environment, use WSL2 as described above.
 ## macOS (experimental)
 ```sh
 xcode-select --install        # provides clang and make
