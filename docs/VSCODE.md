@@ -5,7 +5,7 @@ The extension lives in `vscode-orb/`. A ready-to-install package is `build/dist/
 
 ## Install
 **From the package (easiest).** In VS Code: *Extensions* view → `...` menu → **Install from VSIX...** → pick
-`orb-lang-0.1.0.vsix`. Reload the window.
+`orb-lang-0.3.0.vsix`. Reload the window.
 
 **From the folder.** Copy `vscode-orb` to
 `%USERPROFILE%\.vscode\extensions\orb-technologies.orb-lang-0.3.0` (Windows) or
@@ -42,4 +42,4 @@ The extension's logic (path translation, WSL command construction, shell quoting
 unit tests, and `extension.js` is exercised end to end against a mock of the VS Code API using the real compiler
 (diagnostics, run/build commands, CodeLens, tasks). It has **not** been loaded into a real VS Code window in the
 environment where it was written; if something misbehaves, open *Orb: Show Output* and report what it says.
-Run the tests with `node --test vscode-orb/test/lib.test.js vscode-orb/test/extension.mock.test.js`.
+Run the tests with `node --test vscode-orb/test/lib.test.js vscode-orb/test/features.test.js vscode-orb/test/extension.mock.test.js`.
