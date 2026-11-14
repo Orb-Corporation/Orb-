@@ -11,7 +11,6 @@ AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 DefaultDirName={localappdata}\Programs\Orb
 DefaultGroupName=Orb!
-DefaultTypeName=full
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
@@ -25,8 +24,8 @@ Compression=lzma2
 SolidCompression=yes
 
 [Types]
-Name: "compact"; Description: "Compiler only"
 Name: "full"; Description: "Full installation"
+Name: "compact"; Description: "Compiler only"
 Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Components]
