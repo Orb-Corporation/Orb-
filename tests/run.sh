@@ -49,6 +49,13 @@ else
     echo "SKIP: VS Code extension tests (Node.js not installed)"
 fi
 
+# Package manager safety tests (Python 3 is needed for the optional package tool).
+if command -v python3 >/dev/null 2>&1; then
+    if python3 -m unittest discover -s tests -p 'test_pkg.py' > $tmp/pkg.txt 2>&1; then ok; else bad "package manager tests" "$(tail -8 $tmp/pkg.txt)"; fi
+else
+    echo "SKIP: package manager tests (Python 3 not installed)"
+fi
+
 # command line interface
 $ORB version | grep -q "Orb!" && ok || bad "orb version"
 $ORB check examples/hello.orb | grep -q ok && ok || bad "orb check"
