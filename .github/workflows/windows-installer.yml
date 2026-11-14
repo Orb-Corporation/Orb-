@@ -15,6 +15,13 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Read Orb! version
+        id: version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path "src/common.h" -Pattern '^#define ORB_VERSION "([^"]+)"'
+          if (-not $match) { throw "ORB_VERSION was not found in src/common.h." }
+          "version=$($match.Matches[0].Groups[1].Value)" >> $env:GITHUB_OUTPUT
       - name: Set up UCRT64 build tools
         uses: msys2/setup-msys2@v2
         with:
@@ -50,7 +57,7 @@ jobs:
       - name: Upload Orb! Setup.exe
         uses: actions/upload-artifact@v4
         with:
-          name: Orb-Setup-0.2.0
-          path: build/installer/Orb-Setup-0.2.0.exe
+          name: Orb-Setup-${{ steps.version.outputs.version }}
+          path: build/installer/Orb-Setup-${{ steps.version.outputs.version }}.exe
           if-no-files-found: error
           retention-days: 90
