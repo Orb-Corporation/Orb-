@@ -1,6 +1,6 @@
 #define AppName "Orb!"
 #ifndef AppVersion
-  #define AppVersion "0.2.1.1"
+  #define AppVersion "0.3.0"
 #endif
 #define AppPublisher "Orb Technologies"
 
@@ -46,14 +46,14 @@ Source: "..\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion recurse
 Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: docs
 Source: "..\std\*"; DestDir: "{app}\std"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: stdlib
 Source: "..\web\orb.js"; DestDir: "{app}\web"; Flags: ignoreversion; Components: websrc
-Source: "..\build\dist\orb-lang-0.2.1.1.vsix"; DestDir: "{app}\extensions"; Flags: ignoreversion; Components: vscode
+Source: "..\build\dist\orb-lang-{#AppVersion}.vsix"; DestDir: "{app}\extensions"; Flags: ignoreversion; Components: vscode
 Source: "..\tools\windows\setup-mingw.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\Orb! Documentation"; Filename: "{app}\docs\DISTRIBUTION.md"; Components: docs
 
 [Run]
-Filename: "{cmd}"; Parameters: "/C code --install-extension ""{app}\extensions\orb-lang-0.2.1.1.vsix"" --force"; StatusMsg: "Installing the Orb! extension into Visual Studio Code..."; Flags: runhidden waituntilterminated; Components: vscode; Check: CodeCliAvailable
+Filename: "{cmd}"; Parameters: "/C code --install-extension ""{app}\extensions\orb-lang-{#AppVersion}.vsix"" --force"; StatusMsg: "Installing the Orb! extension into Visual Studio Code..."; Flags: runhidden waituntilterminated; Components: vscode; Check: CodeCliAvailable
 
 [Code]
 function HasPathEntry(const ExistingPath, Dir: string): Boolean;
