@@ -16,6 +16,25 @@ fn main() {
 }
 ```
 
+## Installing Orb!
+
+**Linux / macOS:**
+```sh
+curl -fsSL https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.sh | sh
+```
+
+**Windows PowerShell:**
+```powershell
+irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | iex
+```
+
+The installer downloads the matching compiler release and opens a component selector. Choose the
+VS Code extension, examples, offline documentation and contributor source files as needed.
+The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `web`) and
+WebAssembly browser runtime are built in. No npm package or separate standard-library download is needed.
+
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for details.
+
 ## Quick start
 
 Requirements: a C compiler (to build the compiler) plus the platform's assembler/linker:
@@ -61,9 +80,18 @@ The Windows and macOS targets were written and checked (assembly generated for e
 assemble) on a Linux-only machine and have **not been executed on real Windows/macOS hardware**; `orb doctor`
 tells you whether your machine works. Details: [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
-**Visual Studio Code**: install `dist/orb-lang-0.1.0.vsix` for highlighting, snippets, ▶ Run / Build / Check,
+**Visual Studio Code**: run `make vsix` to create the extension under `build/dist/` for highlighting, snippets, ▶ Run / Build / Check,
 inline compiler errors, tasks and WSL support on Windows. A Dev Container is included for Codespaces/Docker.
 Details: [docs/VSCODE.md](docs/VSCODE.md).
+
+## Orb! in the browser (HTML + CSS + Orb!)
+
+`use web;` is built into the compiler just like `use math;`: there is no npm install or separate
+runtime download. `orb build app.orb --target wasm -o app.wasm` emits both `app.wasm` and a
+self-starting `app.wasm.js` containing the browser bridge. Add only
+`<script type="module" src="./app.wasm.js"></script>` to your HTML. Start with
+[docs/WEB.md](docs/WEB.md); five runnable apps are in `examples/web/`.
+
 
 ## The language in one page
 
@@ -169,8 +197,9 @@ they are.
 src/        the compiler (C11, no dependencies)
 std/        standard library written in Orb! (embedded into the compiler at build time)
 examples/   example programs        tests/    regression tests, fuzzer
+examples/web/ browser apps         web/      orb.js, the browser loader (see docs/WEB.md)
 bench/      benchmarks vs C         docs/     language reference, architecture
-tools/      build helper (embeds std/)
+tools/      build, test and installer helpers (embeds std/ and the Web runtime)
 ```
 
 © Orb Technologies
