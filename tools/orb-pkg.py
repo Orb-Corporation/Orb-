@@ -40,7 +40,7 @@ def safe_archive_path(name: str) -> PurePosixPath:
     path = PurePosixPath(name)
     if path.is_absolute() or not path.parts or any(part in ("..", "") for part in path.parts):
         raise PackageError(f"unsafe path in source archive: {name!r}")
-    if path.parts[0].endswith(":") or ":" in path.name:
+    if any(":" in part for part in path.parts):
         raise PackageError(f"unsafe drive path in source archive: {name!r}")
     return path
 
