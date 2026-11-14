@@ -141,14 +141,14 @@ def source_files(archive: bytes, module: str) -> dict[str, bytes]:
 
     candidates = [
         (info, path) for info, path in entries
-        if path.name == f"{module}.orb" and len(path.parts) <= 2
+        if path.name == f"{module}.orb" and len(path.parts) <= 3
     ]
     if not candidates:
         raise PackageError(
             f"repository has no {module}.orb module file; expected it at the repository root or in src/"
         )
     candidates.sort(key=lambda pair: (len(pair[1].parts), "src" not in pair[1].parts))
-    entry_info, entry_path = candidates[0]
+    _, entry_path = candidates[0]
     parent = entry_path.parent
     output: dict[str, bytes] = {}
     total = 0
