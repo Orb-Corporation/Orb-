@@ -1,0 +1,8 @@
+use file;
+
+fn main() {
+    file.write_text(".orb-v030-test.tmp", "file-module-ok") catch |e| { println("write failed"); return; };
+    value := file.read_text(".orb-v030-test.tmp") catch |e| { println("read failed"); return; };
+    println(value);
+    file.free_text(value);
+}
