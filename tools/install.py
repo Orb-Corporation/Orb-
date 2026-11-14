@@ -45,7 +45,7 @@ def choose_components() -> set[str]:
     for i, (key, label, selected) in enumerate(items, 1):
         state = "x" if selected else " "
         print(f"  {i}. [{state}] {label}")
-    print("\nPress Enter for the defaults, or enter numbers separated by commas (for example: 1,2,3,6).")
+    print("\nPress Enter for the defaults, or enter numbers separated by commas (for example: 1,2,3,6,7).")
     raw = input("Selections: ").strip().lower()
     if not raw:
         return {key for key, _, default in items if default}
