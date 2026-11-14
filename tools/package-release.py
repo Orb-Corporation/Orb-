@@ -53,6 +53,10 @@ def main() -> int:
             target_name = "extensions" if name == "extensions" else name
             copy_tree(source, stage / "share" / "orb" / target_name)
 
+    package_tools = stage / "share" / "orb" / "tools"
+    package_tools.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "tools" / "orb-pkg.py", package_tools / "orb-pkg.py")
+
     manifest = {
         "name": "Orb!",
         "version": args.version.lstrip("v"),
