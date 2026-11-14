@@ -21,7 +21,7 @@ typedef struct {
 
 static char *stem_of(const char *path) {
     const char *b = path, *p;
-        if (*p == '/' || *p == '\\') last = p;
+    for (p = path; *p; p++) if (*p == '/' || *p == '\\') b = p + 1;
     char *s = xstrdup(b);
     char *dot = strrchr(s, '.');
     if (dot && !strcmp(dot, ".orb")) *dot = 0;
@@ -225,7 +225,7 @@ static int cmd_build(Opts *o, bool run) {
 static char *dir_of_executable(const char *path) {
     const char *last = NULL;
     for (const char *p = path; *p; p++)
-        if (*p == '/' || *p == '\\\\') last = p;
+        if (*p == '/' || *p == '\\') last = p;
     if (!last) return xstrdup(".");
     if (last == path) return xstrndup(path, 1);
     return xstrndup(path, (size_t)(last - path));
