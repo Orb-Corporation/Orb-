@@ -345,6 +345,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if sys.version_info < (3, 10):
+        print("orb pkg: Python 3.10 or newer is required", file=sys.stderr)
+        return 2
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
