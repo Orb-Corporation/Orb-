@@ -9,4 +9,5 @@ void plat_cleanup(const char *dir, const char **files); // removes the listed fi
 bool plat_stderr_tty(void);
 int plat_mkdir(const char *path);
 char *plat_join(const char *dir, const char *name);
+char *plat_executable_path(const char *fallback);
 #endif
