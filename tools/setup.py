@@ -154,7 +154,7 @@ def main() -> int:
         print("\nInstallation plan")
         print(f"  Version: Orb! {version}")
         print(f"  Compiler: {bin_dir / 'orb'}")
-        print("  Built in: math, strings, vec, io, web, WebAssembly browser runtime")
+        print("  Built in: math, strings, vec, io, json, web, WebAssembly browser runtime")
         for key, label in (
             ("vscode", "VS Code extension"), ("examples", "Example projects"),
             ("docs", "Offline documentation"), ("stdlib", "Standard-library source"),
