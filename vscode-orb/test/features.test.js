@@ -10,11 +10,15 @@ test('module completion is context-aware', () => {
 });
 
 test('top-level completion includes keywords, standard modules and declarations', () => {
-  const source = 'pub fn calculate(x: i64) -> i64 { return x; }\nfn main() { pri';
+  const source = 'pub fn calculate(x: i64) -> i64 { return x; }\\nfn main() {';
   const items = E.complete(source, source.length);
-  assert.ok(items.some(x => x.label === 'println'));
-  assert.ok(items.some(x => x.label === 'calculate'));
   assert.ok(items.some(x => x.label === 'json' && x.kind === 'module'));
+  assert.ok(items.some(x => x.label === 'calculate'));
+
+  const builtins = E.complete(source + ' pri', source.length + 4);
+  assert.ok(builtins.some(x => x.label === 'println'));
+  const declarations = E.complete(source + ' cal', source.length + 4);
+  assert.ok(declarations.some(x => x.label === 'calculate'));
 });
 
 test('hover explains built-ins, modules and local function signatures', () => {
