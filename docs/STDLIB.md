@@ -39,6 +39,25 @@ absent), `trim`, `is_space`, `parse_i64(s) -> i64!` (error `ParseError`),
 `read_line() -> str!`. Errors: `IoError`, `NotFound`. Results of the read functions are
 heap-allocated; release them with `free`.
 
+## file
+A friendlier naming layer over `io`: `read_text(path) -> str!`, `write_text(path, contents) -> !`,
+`read_stdin() -> str!`, `read_line() -> str!` and `free_text(contents)`. Read results are
+heap-allocated and must be released with `free_text` (or `free(contents.ptr)`).
+
+## json and http (WebAssembly only)
+These modules are small convenience wrappers over the browser host APIs in `web`. They require
+`orb build --target wasm` and the browser Fetch / JSON runtime; native targets intentionally reject
+them because they do not currently ship a native JSON parser or HTTP client.
+
+- `json`: `parse`, `release`, `kind`, `len`, `get`, `at`, `key_at`, `as_string`,
+  `as_number`, `as_bool`, `stringify`, `object`, `array`, `null`, `from_number`,
+  `from_string`, `from_bool`, `set`, `push`. Values are `web.Json` handles; release owned
+  handles with `json.release`, and release returned strings with `web.free_str`.
+- `http`: `request`, `get`, `post_json`, `status`, `ok`, `failed`, `body_text`,
+  `header`, `free_text`. Requests are asynchronous and obey browser same-origin / CORS rules.
+
+For the full DOM, storage, Fetch and JSON API, use `web` directly; see [WEB.md](WEB.md).
+
 ## vec
 Generic growable array:
 ```orb
