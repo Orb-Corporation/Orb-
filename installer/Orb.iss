@@ -42,6 +42,7 @@ Name: "mingw"; Description: "Install or configure MinGW-w64 for native Windows b
 
 [Files]
 Source: "..\build\orb.exe"; DestDir: "{app}\bin"; Flags: ignoreversion; Components: compiler
+Source: "..\tools\orb-pkg.py"; DestDir: "{app}\share\orb\tools"; Flags: ignoreversion; Components: compiler
 Source: "..\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: examples
 Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: docs
 Source: "..\std\*"; DestDir: "{app}\std"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: stdlib
