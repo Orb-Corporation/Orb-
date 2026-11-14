@@ -50,6 +50,9 @@ orb run examples/hello.orb
 orb build examples/primes.orb -o primes && ./primes
 orb check examples/bank.orb
 orb new myproject        # creates myproject/main.orb
+mkdir app && cd app
+orb init app              # create orb.toml + main.orb in this directory
+orb install greetings https://github.com/example/orb-greetings.git
 orb version
 ```
 
@@ -58,7 +61,11 @@ orb version
 | `orb build f.orb [-o out]` | compile to an executable (default name: the file name without `.orb`) |
 | `orb run f.orb [args...]` | compile to a temporary executable, run it, propagate its exit code |
 | `orb check f.orb` | parse and type-check only |
-| `orb new name` | create a new project directory |
+| `orb new name` | create a source directory with `main.orb` |
+| `orb init [name]` | initialise `orb.toml` and `main.orb` in the current directory |
+| `orb install [name url]` | install declared dependencies, or add an HTTPS Git dependency |
+| `orb update` | fast-forward installed Git dependencies |
+| `orb list` | list project dependencies |
 | `orb doctor` | check the toolchain, compile and run a test program |
 | `orb version` | print the version |
 
@@ -80,7 +87,7 @@ The Windows and macOS targets were written and checked (assembly generated for e
 assemble) on a Linux-only machine and have **not been executed on real Windows/macOS hardware**; `orb doctor`
 tells you whether your machine works. Details: [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
-**Visual Studio Code**: run `make vsix` to create the extension under `build/dist/` for highlighting, snippets, ▶ Run / Build / Check,
+**Visual Studio Code**: run `make vsix` to create the extension under `build/dist/` for highlighting, snippets, contextual completions, document outline, ▶ Run / Build / Check / Inspect IR,
 inline compiler errors, tasks and WSL support on Windows. A Dev Container is included for Codespaces/Docker.
 Details: [docs/VSCODE.md](docs/VSCODE.md).
 
@@ -134,7 +141,7 @@ fn main() {
 }
 ```
 
-Full reference: [docs/LANGUAGE.md](docs/LANGUAGE.md). Standard library: [docs/STDLIB.md](docs/STDLIB.md).
+Project dependencies: [docs/PACKAGES.md](docs/PACKAGES.md). Full reference: [docs/LANGUAGE.md](docs/LANGUAGE.md). Standard library: [docs/STDLIB.md](docs/STDLIB.md).
 Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What is implemented
@@ -149,7 +156,7 @@ Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 * Method-call syntax for any function: `list.push(3)` is `push(&list, 3)`.
 * Compiler: lexer → parser → type checker → IR → optimiser → register allocator → target-specific x86-64 assembly.
 * Diagnostics with source line, caret and "did you mean" suggestions.
-* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`, plus target-specific OS layers.
+* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `file`, `vec`, plus WebAssembly-only `json` / `http` convenience modules and target-specific OS layers.
 * Tests: `make test` runs the regression fixtures and CLI checks; VS Code extension tests run when Node.js is installed. The differential fuzzer is separate: `python3 tests/fuzz.py 500`.
 
 ## Performance (measured, reproducible)
