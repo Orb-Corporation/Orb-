@@ -37,7 +37,7 @@ jobs:
       - name: Build browser examples
         run: make web-examples
       - name: Check installer and release packager syntax
-        run: python -m py_compile tools/install.py tools/setup.py tools/package-release.py
+        run: python -m py_compile tools/install.py tools/setup.py tools/package-release.py tools/orb-pkg.py
       - name: Build and inspect Linux release package
         run: |
           python tools/package-vsix.py build/dist
