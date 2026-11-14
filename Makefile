@@ -43,7 +43,9 @@ bench: $(BUILD)/orb
 
 install: $(BUILD)/orb
 	install -d $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(PREFIX)/share/orb/tools
 	install -m 755 $(BUILD)/orb $(DESTDIR)$(PREFIX)/bin/orb
+	install -m 644 tools/orb-pkg.py $(DESTDIR)$(PREFIX)/share/orb/tools/orb-pkg.py
 
 vsix:
 	python3 tools/package-vsix.py $(BUILD)/dist
