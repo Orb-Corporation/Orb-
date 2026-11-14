@@ -30,7 +30,7 @@ irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | ie
 
 The installer downloads the matching compiler release and opens a component selector. Choose the
 VS Code extension, examples, offline documentation and contributor source files as needed.
-The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `web`) and
+The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `json`, `web`) and
 WebAssembly browser runtime are built in. No npm package or separate standard-library download is needed.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for details.
@@ -134,7 +134,7 @@ fn main() {
 }
 ```
 
-Full reference: [docs/LANGUAGE.md](docs/LANGUAGE.md). Standard library: [docs/STDLIB.md](docs/STDLIB.md).
+Full reference: [docs/LANGUAGE.md](docs/LANGUAGE.md). Standard library: [docs/STDLIB.md](docs/STDLIB.md). Packages: [docs/PACKAGES.md](docs/PACKAGES.md).
 Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What is implemented
@@ -149,7 +149,7 @@ Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 * Method-call syntax for any function: `list.push(3)` is `push(&list, 3)`.
 * Compiler: lexer → parser → type checker → IR → optimiser → register allocator → target-specific x86-64 assembly.
 * Diagnostics with source line, caret and "did you mean" suggestions.
-* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`, plus target-specific OS layers.
+* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`, `json`, `web`, plus target-specific OS layers.\n* VS Code IntelliSense: context-aware completions for keywords, local declarations, standard modules and module members, plus hover help.\n* Git-based package manager (`orb-pkg`) with project manifests, exact-commit lock files, install/update/remove/list, and compiler resolution from `.orb/packages` / `ORB_PATH`.
 * Tests: `make test` runs the regression fixtures and CLI checks; VS Code extension tests run when Node.js is installed. The differential fuzzer is separate: `python3 tests/fuzz.py 500`.
 
 ## Performance (measured, reproducible)
