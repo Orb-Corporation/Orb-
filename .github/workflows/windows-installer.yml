@@ -45,6 +45,7 @@ jobs:
             $errors | ForEach-Object { Write-Error $_ }
             throw "The MinGW setup helper contains PowerShell syntax errors."
           }
+          $env:MSYS2_ROOT = Join-Path $env:RUNNER_TEMP "setup-msys2"
           & "tools/windows/setup-mingw.ps1" -DetectOnly
       - name: Build and smoke-test native Orb! compiler
         shell: msys2 {0}
