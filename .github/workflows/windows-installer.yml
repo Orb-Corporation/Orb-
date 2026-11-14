@@ -48,6 +48,20 @@ jobs:
             $errors | ForEach-Object { Write-Error $_ }
             throw "The MinGW setup helper contains PowerShell syntax errors."
           }
+          $bin = Join-Path $env:MSYS2_ROOT "ucrt64\bin"
+          Write-Host "MSYS2 root: $env:MSYS2_ROOT"
+          Write-Host "UCRT64 bin exists: $(Test-Path $bin)"
+          $gcc = Join-Path $bin "gcc.exe"
+          $as = Join-Path $bin "as.exe"
+          Write-Host "gcc.exe exists: $(Test-Path $gcc); as.exe exists: $(Test-Path $as)"
+          if (Test-Path $gcc) {
+            & $gcc -dumpmachine
+            Write-Host "gcc exit: $LASTEXITCODE"
+          }
+          if (Test-Path $as) {
+            & $as --version | Select-Object -First 1
+            Write-Host "as exit: $LASTEXITCODE"
+          }
           & "tools/windows/setup-mingw.ps1" -DetectOnly
       - name: Build and smoke-test native Orb! compiler
         shell: msys2 {0}
