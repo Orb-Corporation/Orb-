@@ -34,7 +34,12 @@ fn main() {
     println("unicode=", symbol);
     free(symbol);
 
+    bad := json.parse("{]") catch |e| {
+        println("invalid json rejected");
+        json.free_doc(doc);
+        return;
+    };
+    json.free_doc(bad);
+    println("invalid json accepted");
     json.free_doc(doc);
-    bad := json.parse("{]");
-    if bad == null { println("invalid json rejected"); }
 }
