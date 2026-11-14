@@ -125,12 +125,11 @@ var
   ScriptPath, PowerShellPath, Params: string;
   ResultCode: Integer;
 begin
+  if not WizardIsTaskSelected('mingw') then Exit;
   ExtractTemporaryFile('setup-mingw.ps1');
   ScriptPath := ExpandConstant('{tmp}\setup-mingw.ps1');
   PowerShellPath := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
-  Params := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ScriptPath + '"';
-  if WizardIsTaskSelected('mingw') then
-    Params := Params + ' -InstallIfMissing';
+  Params := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ScriptPath + '" -InstallIfMissing';
   if not Exec(PowerShellPath, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
     MsgBox('Orb! could not start the MinGW-w64 setup helper. The compiler is installed, but native Windows builds may need manual toolchain setup.', mbInformation, MB_OK)
   else if ResultCode <> 0 then
