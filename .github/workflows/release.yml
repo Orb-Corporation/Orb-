@@ -31,6 +31,11 @@ jobs:
         run: python tools/package-vsix.py build/dist
       - name: Create Linux release archive
         run: python tools/package-release.py --version "${GITHUB_REF_NAME#v}" --platform linux-x86_64 --output-dir dist
+      - name: Add version-matched VS Code extension to release assets
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cp "build/dist/orb-lang-${version}.vsix" dist/
+          test -f "dist/orb-lang-${version}.vsix"
       - uses: actions/upload-artifact@v4
         with:
           name: orb-linux-x86_64
@@ -90,14 +95,14 @@ jobs:
       - name: Compile graphical component installer
         shell: pwsh
         run: |
-          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          $iscc = "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"
           if (-not (Test-Path $iscc)) { throw "Inno Setup 6 compiler was not found." }
           $version = $env:GITHUB_REF_NAME.TrimStart('v')
-          & $iscc "/DAppVersion=$version" "installer\Orb.iss"
-          $installer = "build\installer\Orb-Setup-$version.exe"
-          Copy-Item $installer "dist\Orb-Setup-$version.exe"
+          & $iscc "/DAppVersion=$version" "installer\\Orb.iss"
+          $installer = "build\\installer\\Orb-Setup-$version.exe"
+          Copy-Item $installer "dist\\Orb-Setup-$version.exe"
           $hash = (Get-FileHash -Path $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  Orb-Setup-$version.exe" | Out-File -Encoding ascii "dist\Orb-Setup-$version.exe.sha256"
+          "$hash  Orb-Setup-$version.exe" | Out-File -Encoding ascii "dist\\Orb-Setup-$version.exe.sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: orb-windows-x86_64
@@ -114,6 +119,16 @@ jobs:
           pattern: orb-*
           path: release-assets
           merge-multiple: true
+      - name: Validate release assets
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_VERSION#v}"
+          test -f "release-assets/orb-lang-${version}.vsix"
+          if find release-assets -maxdepth 1 -type f -name 'orb-lang-*.vsix' ! -name "orb-lang-${version}.vsix" | grep -q .; then
+            echo "Unexpected stale VS Code extension package found." >&2
+            exit 1
+          fi
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
