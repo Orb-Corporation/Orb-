@@ -15,7 +15,7 @@ pub fn as_bool(value: web.Json) -> bool! { return web.json_bool(value); }
 pub fn stringify(value: web.Json) -> str! { return web.json_stringify(value); }
 pub fn object() -> web.Json! { return web.json_object(); }
 pub fn array() -> web.Json! { return web.json_array(); }
-pub fn null() -> web.Json! { return web.json_null(); }
+pub fn null_value() -> web.Json! { return web.json_null(); }
 pub fn from_number(value: f64) -> web.Json! { return web.json_from_num(value); }
 pub fn from_string(value: str) -> web.Json! { return web.json_from_str(value); }
 pub fn from_bool(value: bool) -> web.Json! { return web.json_from_bool(value); }
