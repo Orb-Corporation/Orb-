@@ -40,7 +40,7 @@ absent), `trim`, `is_space`, `parse_i64(s) -> i64!` (error `ParseError`),
 heap-allocated; release them with `free`.
 
 ## file
-A friendlier naming layer over `io`: `read_text(path) -> str!`, `write_text(path, contents) -> !`,
+A native-filesystem naming layer over `io` (the browser target has no local filesystem): `read_text(path) -> str!`, `write_text(path, contents) -> !`,
 `read_stdin() -> str!`, `read_line() -> str!` and `free_text(contents)`. Read results are
 heap-allocated and must be released with `free_text` (or `free(contents.ptr)`).
 
