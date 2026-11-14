@@ -54,7 +54,7 @@ Source: "..\tools\windows\setup-mingw.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 Name: "{group}\Orb! Documentation"; Filename: "{app}\docs\DISTRIBUTION.md"; Components: docs
 
 [Run]
-Filename: "{cmd}"; Parameters: "/C code --install-extension ""{app}\extensions\orb-lang-0.2.1.1.vsix"" --force"; StatusMsg: "Installing the Orb! extension into Visual Studio Code..."; Flags: runhidden waituntilterminated; Components: vscode; Check: CodeCliAvailable
+Filename: "{cmd}"; Parameters: "/C code --install-extension ""{app}\extensions\orb-lang-0.3.0.vsix"" --force"; StatusMsg: "Installing the Orb! extension into Visual Studio Code..."; Flags: runhidden waituntilterminated; Components: vscode; Check: CodeCliAvailable
 
 [Code]
 function HasPathEntry(const ExistingPath, Dir: string): Boolean;
