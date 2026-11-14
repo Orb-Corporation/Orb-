@@ -31,7 +31,7 @@ $ORB build tests/wasm/abi.orb --target wasm -o $TMP/abi.wasm && node tests/wasm/
 # New convenience modules: JSON is executable in Node; HTTP callback signatures type-check.
 if $ORB build tests/wasm/stdlib_modules.orb --target wasm -o $TMP/stdlib_modules.wasm 2>$TMP/err.txt; then
     node tools/orb-node.js $TMP/stdlib_modules.wasm > $TMP/stdlib_modules.out 2>/dev/null
-    if cmp -s $TMP/stdlib_modules.out tests/wasm/stdlib_modules.out; then ok; else bad "stdlib JSON wrapper output differs"; fi
+    if cmp -s $TMP/stdlib_modules.out tests/wasm/stdlib_modules.out; then ok; else bad "stdlib JSON wrapper output differs: got [$(cat $TMP/stdlib_modules.out)], expected [$(cat tests/wasm/stdlib_modules.out)]"; fi
 else
     bad "stdlib wrapper modules do not compile: $(head -1 $TMP/err.txt)"
 fi
