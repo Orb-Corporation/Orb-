@@ -128,7 +128,7 @@ Generics are monomorphised: one machine-code copy per distinct instantiation.
 
 ## Modules
 
-`use name;` loads `name.orb` from the directory of the importing file, or the standard library.
+`use name;` loads `name.orb` from the directory of the importing file, the current project's `.orb/packages/name/` cache (when an `orb.toml` project root is found), or the standard library.
 Members are accessed as `name.member` and must be declared `pub` to be visible outside their
 file. Module names must not collide with type names (`str` is a type, the string helpers are
 the module `strings`).
