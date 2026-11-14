@@ -19,6 +19,7 @@ MAX_ARCHIVE = 32 * 1024 * 1024
 MAX_TOTAL_SOURCE = 16 * 1024 * 1024
 MODULE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+SOURCE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\\.orb$")
 
 
 class PackageError(Exception):
@@ -34,10 +35,12 @@ def valid_module_name(name: str) -> bool:
 
 
 def safe_archive_path(name: str) -> PurePosixPath:
+    if "\\\\" in name or "\\0" in name:
+        raise PackageError(f"unsafe path separator in source archive: {name!r}")
     path = PurePosixPath(name)
     if path.is_absolute() or not path.parts or any(part in ("..", "") for part in path.parts):
         raise PackageError(f"unsafe path in source archive: {name!r}")
-    if path.parts[0].endswith(":"):
+    if path.parts[0].endswith(":") or ":" in path.name:
         raise PackageError(f"unsafe drive path in source archive: {name!r}")
     return path
 
@@ -87,23 +90,38 @@ def init_project(name: str | None = None) -> Path:
 
 
 def download_source_archive(repository: str, ref: str) -> tuple[bytes, str]:
-    if not REPO_RE.fullmatch(repository):
+    if not REPO_RE.fullmatch(repository) or any(part in (".", "..") for part in repository.split("/")):
         raise PackageError("repository must use the owner/repository form")
-    url = f"https://api.github.com/repos/{repository}/zipball/{urllib.parse.quote(ref, safe='')}"
-    request = urllib.request.Request(url, headers={
+    headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "Orb-Package-Manager/0.3",
-    })
+    }
     try:
+        if ref == "HEAD":
+            request = urllib.request.Request(f"https://api.github.com/repos/{repository}", headers=headers)
+            with urllib.request.urlopen(request, timeout=30) as response:
+                repository_info = json.load(response)
+            ref = repository_info.get("default_branch") or ""
+            if not ref:
+                raise PackageError("GitHub did not report a default branch for this repository")
+        commit_url = f"https://api.github.com/repos/{repository}/commits/{urllib.parse.quote(ref, safe='')}"
+        request = urllib.request.Request(commit_url, headers=headers)
+        with urllib.request.urlopen(request, timeout=30) as response:
+            commit_info = json.load(response)
+        resolved = commit_info.get("sha")
+        if not isinstance(resolved, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", resolved):
+            raise PackageError("GitHub returned an invalid commit SHA")
+        url = f"https://api.github.com/repos/{repository}/zipball/{resolved}"
+        request = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(request, timeout=30) as response:
             data = response.read(MAX_ARCHIVE + 1)
-            final_url = response.geturl()
-    except Exception as exc:  # urllib exposes several transport and HTTP exception types
-        raise PackageError(f"could not download {repository}@{ref}: {exc}") from exc
+    except PackageError:
+        raise
+    except Exception as exc:
+        raise PackageError(f"could not resolve or download {repository}@{ref}: {exc}") from exc
     if len(data) > MAX_ARCHIVE:
         raise PackageError("source archive exceeds the 32 MiB download limit")
-    resolved = final_url.rsplit("/", 1)[-1] or ref
-    return data, resolved
+    return data, resolved.lower()
 
 
 def source_files(archive: bytes, module: str) -> dict[str, bytes]:
@@ -123,7 +141,7 @@ def source_files(archive: bytes, module: str) -> dict[str, bytes]:
 
     candidates = [
         (info, path) for info, path in entries
-        if path.name == f"{module}.orb"
+        if path.name == f"{module}.orb" and len(path.parts) <= 2
     ]
     if not candidates:
         raise PackageError(
@@ -135,7 +153,7 @@ def source_files(archive: bytes, module: str) -> dict[str, bytes]:
     output: dict[str, bytes] = {}
     total = 0
     for info, path in entries:
-        if path.parent != parent or path.suffix != ".orb":
+        if path.parent != parent or not SOURCE_RE.fullmatch(path.name):
             continue
         filename = path.name
         data = bundle.read(info)
@@ -223,12 +241,22 @@ def cmd_sync(args: argparse.Namespace) -> int:
         if not isinstance(dependency, dict):
             raise PackageError(f"missing dependency declaration for {module}")
         repository = dependency.get("repository")
-        ref = dependency.get("ref", "HEAD")
-        if not isinstance(repository, str) or not isinstance(ref, str):
+        declared_ref = dependency.get("ref", "HEAD")
+        if not isinstance(repository, str) or not isinstance(declared_ref, str):
             raise PackageError(f"invalid dependency entry for {module}")
-        package = install_one(root, module, repository, ref, lock)
+        previous = lock.get("packages", {}).get(module, {})
+        use_lock = (
+            args.command == "install"
+            and previous.get("repository") == repository
+            and previous.get("ref") == declared_ref
+            and isinstance(previous.get("resolved_ref"), str)
+        )
+        selected_ref = previous["resolved_ref"] if use_lock else declared_ref
+        package = install_one(root, module, repository, selected_ref, lock)
+        package["ref"] = declared_ref
         lock.setdefault("packages", {})[module] = package
-        print(f"installed {module} from {repository}@{package['resolved_ref']}")
+        action = "restored" if use_lock else "installed"
+        print(f"{action} {module} from {repository}@{package['resolved_ref']}")
     write_json_atomic(root / LOCKFILE, lock)
     return 0
 
