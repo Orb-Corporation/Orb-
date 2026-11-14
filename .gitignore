@@ -3,3 +3,6 @@ __pycache__/
 *.py[cod]
 examples/web/*/app.wasm
 examples/web/*/app.wasm.js
+
+# Downloaded Orb! dependencies; keep the lock file under version control.
+.orb/packages/
