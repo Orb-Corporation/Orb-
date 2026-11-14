@@ -85,7 +85,7 @@ jobs:
           if (-not (Test-Path $iscc)) {
             throw "Inno Setup 6 compiler was not found on this runner."
           }
-          & $iscc "installer\Orb.iss"
+          & $iscc "/DAppVersion=${{ steps.version.outputs.version }}" "installer\Orb.iss"
       - name: Upload Orb! Setup.exe
         uses: actions/upload-artifact@v4
         with:

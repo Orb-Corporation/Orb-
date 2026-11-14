@@ -18,6 +18,10 @@ function makeVscode(state) {
     const config = { path: orb, mode: 'native', wslDistro: '', extraArgs: [], checkOnSave: true };
     return {
         Position, Range, Diagnostic,
+        CompletionItem: class { constructor(label, kind) { this.label = label; this.kind = kind; } },
+        CompletionItemKind: { Keyword: 1, Function: 2 },
+        DocumentSymbol: class { constructor(name, detail, kind, range, selectionRange) { Object.assign(this, { name, detail, kind, range, selectionRange }); } },
+        SymbolKind: { Function: 11, Struct: 22, Enum: 10, Constant: 14 },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2 },
         Uri: { file: p => ({ fsPath: p, scheme: 'file', toString: () => 'file://' + p }), parse: s => ({ fsPath: s.replace('file://', ''), toString: () => s }) },
         CodeLens: class { constructor(range, command) { this.range = range; this.command = command; } },
@@ -32,6 +36,8 @@ function makeVscode(state) {
                 return { set: (u, d) => m.set(u.fsPath, d), delete: u => m.delete(u.fsPath), clear: () => m.clear(), dispose() {} };
             },
             registerCodeLensProvider: (sel, p) => { state.lens = p; return { dispose() {} }; },
+            registerCompletionItemProvider: (sel, p) => { state.completion = p; return { dispose() {} }; },
+            registerDocumentSymbolProvider: (sel, p) => { state.symbols = p; return { dispose() {} }; },
         },
         window: {
             createOutputChannel: () => ({ appendLine: l => state.log.push(l), show() {}, dispose() {} }),
@@ -66,6 +72,7 @@ test('extension: check publishes diagnostics, run/build use the terminal', async
     const state = { log: [], warn: [], err: [], terminals: [], docs: [], dir };
     const doc = (f) => ({ fileName: f, uri: { fsPath: f, scheme: 'file', toString: () => 'file://' + f }, languageId: 'orb', isUntitled: false, isDirty: false,
         lineCount: fs.readFileSync(f, 'utf8').split('\n').length, lineAt: i => ({ text: fs.readFileSync(f, 'utf8').split('\n')[i] }),
+        getText: () => fs.readFileSync(f, 'utf8'),
         getWordRangeAtPosition: () => undefined, save: async () => {} });
     const vs = makeVscode(state);
     const origLoad = Module._load;
@@ -109,8 +116,23 @@ test('extension: check publishes diagnostics, run/build use the terminal', async
 
         // code lens above main
         const lenses = state.lens.provideCodeLenses(doc(good));
-        assert.strictEqual(lenses.length, 2);
+        assert.strictEqual(lenses.length, 3);
         assert.strictEqual(lenses[0].range.start.line, 0);
+        assert.strictEqual(lenses[2].command.command, 'orb.inspectIR');
+
+        // Contextual module completion and outline symbols
+        const completionDoc = {
+            getText: () => 'use math;\\nfn main() {\\n    math.',
+            lineAt: () => ({ text: '    math.' })
+        };
+        const completions = state.completion.provideCompletionItems(completionDoc, { line: 2, character: 9 });
+        assert.ok(completions.some(x => x.label === 'sqrt'));
+        const symbols = state.symbols.provideDocumentSymbols(doc(good));
+        assert.ok(symbols.some(x => x.name === 'main' && x.kind === 11));
+
+        // Inspect IR through the same terminal
+        await vs._commands['orb.inspectIR']();
+        assert.strictEqual(state.terminals[0].sent[3], `${orb} build ${good} --emit-ir`);
 
         // tasks
         const tasks = state.taskProvider.provideTasks();

@@ -129,6 +129,67 @@ function maybeCheck(doc) {
     if (doc.languageId === 'orb' && !doc.isUntitled && doc.uri.scheme === 'file') checkFile(doc.fileName, doc.uri);
 }
 
+const MODULE_MEMBERS = {
+    math: ['PI', 'E', 'sqrt', 'abs', 'min', 'max', 'clamp', 'floor', 'ceil', 'round', 'powi', 'ipow', 'sin', 'cos', 'exp', 'ln'],
+    strings: ['concat', 'starts_with', 'ends_with', 'find', 'trim', 'is_space', 'parse_i64', 'from_i64'],
+    io: ['read_file', 'write_file', 'read_stdin', 'read_line'],
+    file: ['read_text', 'write_text', 'read_stdin', 'read_line', 'free_text'],
+    vec: ['Vec', 'push', 'get', 'set', 'pop', 'count', 'items', 'free_vec'],
+    json: ['parse', 'release', 'kind', 'len', 'get', 'at', 'key_at', 'as_string', 'as_number', 'as_bool', 'stringify', 'object', 'array', 'null_value', 'from_number', 'from_string', 'from_bool', 'set', 'push'],
+    http: ['request', 'get', 'post_json', 'status', 'ok', 'failed', 'body_text', 'header', 'free_text'],
+    web: ['get_element', 'query', 'create', 'set_text', 'on_click', 'fetch', 'fetch_get', 'fetch_post_json', 'status', 'response_ok', 'failed', 'body_text', 'json_parse', 'json_stringify']
+};
+const KEYWORDS = ['fn', 'pub', 'struct', 'enum', 'const', 'use', 'if', 'else', 'while', 'for', 'in', 'loop', 'break', 'continue', 'return', 'true', 'false', 'null', 'as', 'try', 'catch', 'extern', 'error', 'fail'];
+const BUILTINS = ['print', 'println', 'eprint', 'eprintln', 'flush', 'exit', 'panic', 'assert', 'args', 'sizeof', 'new', 'make', 'free'];
+
+class OrbCompletionProvider {
+    provideCompletionItems(doc, position) {
+        const source = doc.getText ? doc.getText() : '';
+        const line = doc.lineAt(position.line).text;
+        const before = line.slice(0, position.character);
+        const member = /([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)?$/.exec(before);
+        let labels;
+        let kind;
+        if (member) {
+            labels = MODULE_MEMBERS[member[1]] || [];
+            kind = vscode.CompletionItemKind.Function;
+        } else {
+            const used = [...source.matchAll(/\buse\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/g)].map(m => m[1]);
+            const declared = [...source.matchAll(/\b(?:pub\s+)?(?:fn|struct|enum|const)\s+([A-Za-z_][A-Za-z0-9_]*)/g)].map(m => m[1]);
+            labels = [...new Set([...KEYWORDS, ...BUILTINS, ...used, ...declared])];
+            kind = vscode.CompletionItemKind.Keyword;
+        }
+        const prefix = member ? (member[2] || '') : ((/[A-Za-z_][A-Za-z0-9_]*$/.exec(before) || [''])[0]);
+        return labels.filter(name => name.startsWith(prefix)).map(name => {
+            const item = new vscode.CompletionItem(name, kind);
+            item.detail = member ? member[1] + ' module member' : 'Orb! symbol';
+            item.sortText = name;
+            return item;
+        });
+    }
+}
+
+class OrbDocumentSymbols {
+    provideDocumentSymbols(doc) {
+        const lines = doc.getText().split(/\r?\n/);
+        const kinds = {
+            fn: vscode.SymbolKind.Function,
+            struct: vscode.SymbolKind.Struct,
+            enum: vscode.SymbolKind.Enum,
+            const: vscode.SymbolKind.Constant
+        };
+        const symbols = [];
+        for (let i = 0; i < lines.length; i++) {
+            const m = /^\s*(?:pub\s+)?(fn|struct|enum|const)\s+([A-Za-z_][A-Za-z0-9_]*)/.exec(lines[i]);
+            if (!m) continue;
+            const range = new vscode.Range(i, 0, i, lines[i].length);
+            const selection = new vscode.Range(i, m.index + m[0].lastIndexOf(m[2]), i, m.index + m[0].lastIndexOf(m[2]) + m[2].length);
+            symbols.push(new vscode.DocumentSymbol(m[2], m[1], kinds[m[1]], range, selection));
+        }
+        return symbols;
+    }
+}
+
 class MainLens {
     provideCodeLenses(doc) {
         const lenses = [];
@@ -137,6 +198,7 @@ class MainLens {
                 const r = new vscode.Range(i, 0, i, 0);
                 lenses.push(new vscode.CodeLens(r, { title: '$(play) Run', command: 'orb.run', arguments: [doc.uri] }));
                 lenses.push(new vscode.CodeLens(r, { title: 'Build', command: 'orb.build', arguments: [doc.uri] }));
+                lenses.push(new vscode.CodeLens(r, { title: 'Inspect IR', command: 'orb.inspectIR', arguments: [doc.uri] }));
             }
         }
         return lenses;
@@ -169,6 +231,10 @@ function activate(context) {
         const out = path.join(path.dirname(f), L.defaultExeName(f, m === 'wsl' ? 'linux' : process.platform));
         runInTerminal(invocation(['build', { path: f }, '-o', { path: out }], path.dirname(f)), path.dirname(f));
     });
+    reg('orb.inspectIR', async (uri) => {
+        const f = await targetFile(uri); if (!f) return;
+        runInTerminal(invocation(['build', { path: f }, '--emit-ir'], path.dirname(f)), path.dirname(f));
+    });
     reg('orb.check', async (uri) => {
         const f = await targetFile(uri); if (!f) return;
         const prev = cfg().get('checkOnSave');
@@ -185,6 +251,8 @@ function activate(context) {
         vscode.workspace.onDidCloseTextDocument(d => { for (const u of perDocUris.get(d.uri.toString()) || []) diagnostics.delete(vscode.Uri.parse(u)); perDocUris.delete(d.uri.toString()); }),
         vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('orb')) { warnedMissing = false; vscode.workspace.textDocuments.forEach(maybeCheck); } }),
         vscode.languages.registerCodeLensProvider({ language: 'orb' }, new MainLens()),
+        vscode.languages.registerCompletionItemProvider({ language: 'orb' }, new OrbCompletionProvider(), '.'),
+        vscode.languages.registerDocumentSymbolProvider({ language: 'orb' }, new OrbDocumentSymbols()),
         vscode.window.onDidCloseTerminal(t => { if (t === terminal) terminal = undefined; })
     );
     vscode.workspace.textDocuments.forEach(maybeCheck);

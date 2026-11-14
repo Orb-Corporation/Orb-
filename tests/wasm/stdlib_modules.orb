@@ -1,0 +1,21 @@
+use web;
+use json;
+use http;
+
+fn on_response(response: web.Response) {
+    if http.ok(response) { println("http-ok"); }
+}
+
+// This function verifies the asynchronous HTTP API and callback type compile.
+fn http_api_smoke() {
+    http.get("https://example.invalid/", on_response) catch |e| { return; };
+}
+
+fn main() {
+    value := json.parse("{\"answer\":42}") catch |e| { println("json-error"); return; };
+    answer := json.get(value, "answer") catch |e| { json.release(value); println("missing"); return; };
+    number := json.as_number(answer) catch 0.0;
+    println(number);
+    json.release(answer);
+    json.release(value);
+}

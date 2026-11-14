@@ -1,0 +1,22 @@
+// http - compact HTTP helpers for Orb!'s browser host.
+// This module uses Fetch API and therefore requires --target wasm.
+use web;
+
+pub fn request(url: str, method: str, body: str, content_type: str, callback: fn(web.Response)) -> ! {
+    return web.fetch(url, method, body, content_type, callback);
+}
+
+pub fn get(url: str, callback: fn(web.Response)) -> ! {
+    return web.fetch_get(url, callback);
+}
+
+pub fn post_json(url: str, body: str, callback: fn(web.Response)) -> ! {
+    return web.fetch_post_json(url, body, callback);
+}
+
+pub fn status(response: web.Response) -> i64 { return web.status(response); }
+pub fn ok(response: web.Response) -> bool { return web.response_ok(response); }
+pub fn failed(response: web.Response) -> bool { return web.failed(response); }
+pub fn body_text(response: web.Response) -> str! { return web.body_text(response); }
+pub fn header(response: web.Response, name: str) -> str! { return web.header(response, name); }
+pub fn free_text(body: str) { web.free_str(body); }

@@ -1,15 +1,15 @@
 # Orb! in Visual Studio Code
 
-The extension lives in `vscode-orb/`. A ready-to-install package is `dist/orb-lang-0.1.0.vsix`
+The extension lives in `vscode-orb/`. A ready-to-install package is `dist/orb-lang-0.3.0.vsix`
 (rebuild it with `make vsix`).
 
 ## Install
 **From the package (easiest).** In VS Code: *Extensions* view → `...` menu → **Install from VSIX...** → pick
-`orb-lang-0.1.0.vsix`. Reload the window.
+`orb-lang-0.3.0.vsix`. Reload the window.
 
 **From the folder.** Copy `vscode-orb` to
-`%USERPROFILE%\.vscode\extensions\orb-technologies.orb-lang-0.1.0` (Windows) or
-`~/.vscode/extensions/orb-technologies.orb-lang-0.1.0` (macOS/Linux) and restart VS Code.
+`%USERPROFILE%\.vscode\extensions\orb-technologies.orb-lang-0.3.0` (Windows) or
+`~/.vscode/extensions/orb-technologies.orb-lang-0.3.0` (macOS/Linux) and restart VS Code.
 
 **Development.** Open the `vscode-orb` folder in VS Code and press `F5` (Extension Development Host).
 
@@ -22,7 +22,7 @@ PATH, otherwise it goes through WSL automatically (setting `orb.mode`: `auto` | 
   the `▶ Run` CodeLens above `fn main()`. The program runs in an integrated terminal called *Orb*, so
   programs that read from stdin work.
 * **Build** (`Ctrl+Alt+B`) writes an executable next to the source file. **Orb: Run File With Arguments...** passes arguments.
-* **Errors appear while you work**: the file is type-checked on open and on save; messages show as squiggles and in
+* **Completions and outline**: contextual suggestions for keywords, declarations, imported modules and known standard-library members; Outline entries for functions, structs, enums and constants.\n* **Inspect IR** from the CodeLens above `fn main` or the command palette. This is compiler IR inspection, not a source-level debugger.\n* **Errors appear while you work**: the file is type-checked on open and on save; messages show as squiggles and in
   the Problems panel (`orb.checkOnSave`).
 * **Tasks**: `Terminal → Run Task → orb: ...`, or in `tasks.json`:
   `{ "type": "orb", "command": "run", "file": "main.orb" }` (problem matcher `$orb` is built in).
@@ -39,6 +39,6 @@ PATH, otherwise it goes through WSL automatically (setting `orb.mode`: `auto` | 
 ## What has been tested
 The extension's logic (path translation, WSL command construction, shell quoting, parsing real compiler output) has
 unit tests, and `extension.js` is exercised end to end against a mock of the VS Code API using the real compiler
-(diagnostics, run/build commands, CodeLens, tasks). It has **not** been loaded into a real VS Code window in the
+(diagnostics, completions, document symbols, run/build/IR commands, CodeLens, tasks). It has **not** been loaded into a real VS Code window in the
 environment where it was written; if something misbehaves, open *Orb: Show Output* and report what it says.
 Run the tests with `node --test vscode-orb/test/lib.test.js vscode-orb/test/extension.mock.test.js`.

@@ -1,5 +1,7 @@
 // Fetch and JSON: asynchronous HTTP, parsing the response, building DOM from it.
 use web;
+use json;
+use http;
 
 people: web.Element;
 
@@ -8,13 +10,13 @@ fn show_status(text: str) {
 }
 
 fn render(j: web.Json) -> ! {
-    n := try web.json_len(j);
+    n := try json.len(j);
     for i in 0..n {
-        p := try web.json_at(j, i);
-        nj := try web.json_get(p, "name");
-        rj := try web.json_get(p, "role");
-        name := try web.json_str(nj);
-        role := try web.json_str(rj);
+        p := try json.at(j, i);
+        nj := try json.get(p, "name");
+        rj := try json.get(p, "role");
+        name := try json.as_string(nj);
+        role := try json.as_string(rj);
         li := try web.create("li");
         try web.set_text(li, name);
         sep := try web.create_text(" - ");
@@ -28,34 +30,34 @@ fn render(j: web.Json) -> ! {
         web.release(sep);
         web.release(em);
         web.release(li);
-        web.json_release(nj);
-        web.json_release(rj);
-        web.json_release(p);
+        json.release(nj);
+        json.release(rj);
+        json.release(p);
     }
     return;
 }
 
 fn on_response(r: web.Response) {
-    if web.failed(r) {
+    if http.failed(r) {
         show_status("Network error: the request could not be sent.");
         return;
     }
-    if !web.response_ok(r) {
+    if !http.ok(r) {
         show_status("The server answered with an error status.");
         return;
     }
-    body := web.body_text(r) catch |e| { show_status("Could not read the response."); return; };
-    j := web.json_parse(body) catch |e| { web.free_str(body); show_status("The response is not valid JSON."); return; };
-    web.free_str(body);
+    body := http.body_text(r) catch |e| { show_status("Could not read the response."); return; };
+    j := json.parse(body) catch |e| { http.free_text(body); show_status("The response is not valid JSON."); return; };
+    http.free_text(body);
     web.clear(people) catch |e| {};
-    render(j) catch |e| { show_status("Unexpected JSON shape."); web.json_release(j); return; };
-    web.json_release(j);
+    render(j) catch |e| { show_status("Unexpected JSON shape."); json.release(j); return; };
+    json.release(j);
     show_status("Loaded.");
 }
 
 fn on_load() {
     show_status("Loading...");
-    web.fetch_get("people.json", on_response) catch |e| { show_status("Could not start the request."); };
+    http.get("people.json", on_response) catch |e| { show_status("Could not start the request."); };
 }
 
 fn main() {

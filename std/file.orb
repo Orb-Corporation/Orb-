@@ -1,0 +1,23 @@
+// file - readable filesystem helpers built on the portable io module.
+// Returned strings are heap allocated; release them with free_text().
+use io;
+
+pub fn read_text(path: str) -> str! {
+    return io.read_file(path);
+}
+
+pub fn write_text(path: str, contents: str) -> ! {
+    return io.write_file(path, contents);
+}
+
+pub fn read_stdin() -> str! {
+    return io.read_stdin();
+}
+
+pub fn read_line() -> str! {
+    return io.read_line();
+}
+
+pub fn free_text(contents: str) {
+    free(contents.ptr);
+}

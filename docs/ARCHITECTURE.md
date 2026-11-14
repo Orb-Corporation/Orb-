@@ -96,4 +96,4 @@ The differential fuzzer is a separate, opt-in test and is **not** run by `make t
 
 An integrated assembler and linker (to drop the binutils dependency), inlining, loop
 optimisations, division by constant via multiplication, additional targets (aarch64), debug
-information, a package manager.
+information, and reproducible package builds (lockfile, immutable revisions and version constraints).

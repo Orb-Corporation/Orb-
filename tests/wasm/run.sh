@@ -11,6 +11,7 @@ bad() { fail=$((fail+1)); echo "FAIL: $*"; }
 for f in tests/ok/*.orb; do
     n=$(basename $f .orb)
     [ $n = wordcount ] && continue          # needs stdin
+    [ $n = file_module ] && continue       # native filesystem I/O is not a WASM API          # needs stdin
     want=tests/ok/$n.out; [ -f tests/wasm/$n.out ] && want=tests/wasm/$n.out    # argc / files differ on the web
     for mode in "" "--wasm-dispatch" "--no-opt"; do
         if $ORB build $f --target wasm $mode -o $TMP/$n.wasm 2>$TMP/err.txt; then
@@ -27,6 +28,12 @@ for f in tests/panic/*.orb tests/wasm/stackoverflow.orb; do
     else bad "$n does not compile"; fi
 done
 $ORB build tests/wasm/abi.orb --target wasm -o $TMP/abi.wasm && node tests/wasm/abi_test.js $TMP/abi.wasm >/dev/null && ok || bad "abi test"
+# New convenience modules: compile-time coverage; browser behavior is exercised in tests/web/examples.
+if $ORB build tests/wasm/stdlib_modules.orb --target wasm -o $TMP/stdlib_modules.wasm 2>$TMP/err.txt; then
+    ok
+else
+    bad "stdlib wrapper modules do not compile: $(head -1 $TMP/err.txt)"
+fi
 # A WASM build also emits a self-starting browser launcher with the embedded host runtime.
 $ORB build examples/web/starter/main.orb --target wasm -o $TMP/starter.wasm 2>$TMP/err.txt && {
     runtime_bytes=$(wc -c < web/orb.js)

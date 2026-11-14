@@ -3,6 +3,7 @@
 #include "ir.h"
 #include "platform.h"
 #include <errno.h>
+#include <ctype.h>
 
 typedef struct {
     const char *input, *output;
@@ -35,7 +36,11 @@ static void usage(void) {
            "  orb run   <file.orb> [options] [args...]\n"
            "  orb check <file.orb>\n"
            "  orb doctor               check the toolchain and compile + run a test program\n"
-           "  orb new   <name>\n"
+           "  orb new   <name>         create a simple source folder\n"
+           "  orb init  [name]         initialise a project in the current directory\n"
+           "  orb install [name url]   install all dependencies, or add one Git repository\n"
+           "  orb update               update installed Git dependencies\n"
+           "  orb list                 list project dependencies\n"
            "  orb version\n\n"
            "options:\n"
            "  -o <file>        output executable (default: input name without .orb)\n"
@@ -232,6 +237,238 @@ static int cmd_new(const char *name) {
     return 0;
 }
 
+/* ---------------------------------------------------------------- project and dependency commands
+   The package manager intentionally uses Git rather than an opaque registry.
+   A package's entry module is <name>.orb, src/<name>.orb, lib/<name>.orb,
+   or src/lib.orb. Dependencies live in .orb/packages/<name>/. */
+typedef struct { char *name; char *url; } PkgDep;
+typedef struct { PkgDep *d; int n, cap; } PkgDepVec;
+
+static char *trim_text(char *s) {
+    while (*s && isspace((unsigned char)*s)) s++;
+    char *e = s + strlen(s);
+    while (e > s && isspace((unsigned char)e[-1])) *--e = 0;
+    return s;
+}
+
+static bool valid_pkg_name(const char *s, bool module_name) {
+    if (!s || !*s) return false;
+    if (!(isalpha((unsigned char)*s) || *s == '_')) return false;
+    for (const unsigned char *p = (const unsigned char *)s + 1; *p; p++) {
+        if (!(isalnum(*p) || *p == '_' || (!module_name && *p == '-'))) return false;
+    }
+    return true;
+}
+
+static int read_project_deps(PkgDepVec *deps) {
+    FILE *f = fopen("orb.toml", "r");
+    if (!f) return -1;
+    char line[4096];
+    bool in_deps = false;
+    while (fgets(line, sizeof line, f)) {
+        char *s = trim_text(line);
+        if (!*s || *s == '#') continue;
+        if (*s == '[') {
+            in_deps = !strcmp(s, "[dependencies]");
+            continue;
+        }
+        if (!in_deps) continue;
+        char *eq = strchr(s, '=');
+        if (!eq) continue;
+        *eq++ = 0;
+        char *name = trim_text(s);
+        char *value = trim_text(eq);
+        size_t n = strlen(value);
+        if (n < 2 || value[0] != '"' || value[n - 1] != '"') continue;
+        value[n - 1] = 0;
+        if (!valid_pkg_name(name, true) || strncmp(value + 1, "https://", 8)) continue;
+        PkgDep dep = { xstrdup(name), xstrdup(value + 1) };
+        vpush(*deps, dep);
+    }
+    fclose(f);
+    return 0;
+}
+
+static bool manifest_has_dependency(const char *name) {
+    PkgDepVec deps = {0};
+    if (read_project_deps(&deps) != 0) return false;
+    for (int i = 0; i < deps.n; i++) if (!strcmp(deps.d[i].name, name)) return true;
+    return false;
+}
+
+static bool add_manifest_dependency(const char *name, const char *url) {
+    char *old = read_file_text("orb.toml");
+    if (!old) return false;
+    size_t old_len = strlen(old);
+    const char *section = strstr(old, "[dependencies]");
+    if (!section) {
+        FILE *f = fopen("orb.toml", "a");
+        if (!f) return false;
+        fprintf(f, "\n[dependencies]\n%s = \"%s\"\n", name, url);
+        bool ok = fclose(f) == 0;
+        return ok;
+    }
+    const char *begin = section + strlen("[dependencies]");
+    const char *end = old + old_len;
+    for (const char *p = begin; p < end; p++) {
+        if ((p == old || p[-1] == '\n') && *p == '[') { end = p; break; }
+    }
+    char *section_text = xstrndup(begin, (size_t)(end - begin));
+    char *line = strtok(section_text, "\n");
+    while (line) {
+        char *s = trim_text(line);
+        char *eq = strchr(s, '=');
+        if (eq) {
+            *eq = 0;
+            if (!strcmp(trim_text(s), name)) return true;
+        }
+        line = strtok(NULL, "\n");
+    }
+    size_t prefix = (size_t)(end - old);
+    size_t suffix = old_len - prefix;
+    size_t cap = old_len + strlen(name) + strlen(url) + 32;
+    char *updated = xcalloc(cap);
+    memcpy(updated, old, prefix);
+    size_t used = prefix;
+    if (used && updated[used - 1] != '\n') updated[used++] = '\n';
+    used += (size_t)snprintf(updated + used, cap - used, "%s = \"%s\"\n", name, url);
+    memcpy(updated + used, end, suffix);
+    FILE *f = fopen("orb.toml", "w");
+    if (!f) return false;
+    bool ok = fputs(updated, f) >= 0 && fclose(f) == 0;
+    return ok;
+}
+
+static bool ensure_package_dirs(void) {
+    if (plat_mkdir(".orb") != 0 && errno != EEXIST) {
+        fprintf(stderr, "orb: cannot create .orb: %s\n", strerror(errno));
+        return false;
+    }
+    if (plat_mkdir(".orb/packages") != 0 && errno != EEXIST) {
+        fprintf(stderr, "orb: cannot create .orb/packages: %s\n", strerror(errno));
+        return false;
+    }
+    return true;
+}
+
+static int install_dependency(const char *name, const char *url) {
+    if (!valid_pkg_name(name, true)) {
+        fprintf(stderr, "orb: invalid dependency name '%s' (use an identifier such as http_client)\n", name);
+        return 1;
+    }
+    if (!url || strncmp(url, "https://", 8)) {
+        fprintf(stderr, "orb: dependencies must use an HTTPS Git repository URL\n");
+        return 1;
+    }
+    for (const unsigned char *p = (const unsigned char *)url; *p; p++) {
+        if (*p <= 0x20 || *p == 0x7f || *p == 0x22 || *p == 0x5c) {
+            fprintf(stderr, "orb: dependency URL contains an unsupported character\n");
+            return 1;
+        }
+    }
+    if (!read_file_text("orb.toml")) {
+        fprintf(stderr, "orb: no orb.toml found; run orb init first\n");
+        return 1;
+    }
+    PkgDepVec deps = {0};
+    (void)read_project_deps(&deps);
+    for (int i = 0; i < deps.n; i++) {
+        if (!strcmp(deps.d[i].name, name) && strcmp(deps.d[i].url, url)) {
+            fprintf(stderr, "orb: dependency '%s' is already configured with a different URL\n", name);
+            return 1;
+        }
+    }
+    if (!ensure_package_dirs()) return 1;
+    char *dir = xsprintf(".orb/packages/%s", name);
+    char *git_config = xsprintf("%s/.git/config", dir);
+    if (!read_file_text(git_config)) {
+        char *av[] = { "git", "clone", "--depth", "1", "--", (char *)url, dir, NULL };
+        if (plat_run(av, false) != 0) {
+            fprintf(stderr, "orb: failed to clone dependency '%s'\n", name);
+            return 1;
+        }
+    } else {
+        printf("dependency %s is already installed (use orb update to refresh it)\n", name);
+    }
+    if (!manifest_has_dependency(name) && !add_manifest_dependency(name, url)) {
+        fprintf(stderr, "orb: could not update orb.toml\n");
+        return 1;
+    }
+    printf("installed %s from %s\n", name, url);
+    return 0;
+}
+
+static int cmd_init(const char *name) {
+    const char *project = name && *name ? name : "orb-project";
+    if (!valid_pkg_name(project, false)) {
+        fprintf(stderr, "orb: invalid project name '%s'\n", project);
+        return 1;
+    }
+    if (read_file_text("orb.toml")) {
+        fprintf(stderr, "orb: orb.toml already exists in this directory\n");
+        return 1;
+    }
+    FILE *f = fopen("orb.toml", "w");
+    if (!f) { fprintf(stderr, "orb: cannot write orb.toml: %s\n", strerror(errno)); return 1; }
+    fprintf(f, "[package]\nname = \"%s\"\nversion = \"0.1.0\"\n\n[dependencies]\n", project);
+    if (fclose(f) != 0) return 1;
+    if (!read_file_text("main.orb")) {
+        f = fopen("main.orb", "w");
+        if (!f) { fprintf(stderr, "orb: cannot write main.orb: %s\n", strerror(errno)); return 1; }
+        fprintf(f, "// %s - an Orb! project\nfn main() {\n    println(\"Hello from %s!\");\n}\n", project, project);
+        fclose(f);
+    }
+    printf("initialised Orb! project '%s'\n  manifest: orb.toml\n  entry:    main.orb\n", project);
+    return 0;
+}
+
+static int cmd_install(int argc, char **argv) {
+    if (argc == 4) return install_dependency(argv[2], argv[3]);
+    if (argc != 2) die("usage: orb install [name https://github.com/owner/repo.git]");
+    PkgDepVec deps = {0};
+    if (read_project_deps(&deps) != 0) {
+        fprintf(stderr, "orb: no orb.toml found; run orb init first\n");
+        return 1;
+    }
+    if (!deps.n) { puts("no dependencies declared in orb.toml"); return 0; }
+    int failed = 0;
+    for (int i = 0; i < deps.n; i++)
+        if (install_dependency(deps.d[i].name, deps.d[i].url) != 0) failed = 1;
+    return failed;
+}
+
+static int cmd_update(void) {
+    PkgDepVec deps = {0};
+    if (read_project_deps(&deps) != 0) {
+        fprintf(stderr, "orb: no orb.toml found; run orb init first\n");
+        return 1;
+    }
+    int failed = 0;
+    for (int i = 0; i < deps.n; i++) {
+        char *dir = xsprintf(".orb/packages/%s", deps.d[i].name);
+        char *av[] = { "git", "-C", dir, "pull", "--ff-only", NULL };
+        printf("updating %s...\n", deps.d[i].name);
+        if (plat_run(av, false) != 0) failed = 1;
+    }
+    return failed;
+}
+
+static int cmd_list(void) {
+    PkgDepVec deps = {0};
+    if (read_project_deps(&deps) != 0) {
+        fprintf(stderr, "orb: no orb.toml found; run orb init first\n");
+        return 1;
+    }
+    if (!deps.n) { puts("no dependencies declared"); return 0; }
+    for (int i = 0; i < deps.n; i++) {
+        char *dir = xsprintf(".orb/packages/%s", deps.d[i].name);
+        char *cfg = xsprintf("%s/.git/config", dir);
+        printf("%-20s %s%s\n", deps.d[i].name, deps.d[i].url,
+            read_file_text(cfg) ? " [installed]" : " [not installed]");
+    }
+    return 0;
+}
+
 // ---------------------------------------------------------------- orb doctor
 static bool tool_ok(const char *tool, const char *flag) {
     char *av[] = { (char *)tool, (char *)flag, NULL };
@@ -307,6 +544,19 @@ int main(int argc, char **argv) {
     if (!strcmp(cmd, "new")) {
         if (argc < 3) die("usage: orb new <name>");
         return cmd_new(argv[2]);
+    }
+    if (!strcmp(cmd, "init")) {
+        if (argc > 3) die("usage: orb init [name]");
+        return cmd_init(argc == 3 ? argv[2] : NULL);
+    }
+    if (!strcmp(cmd, "install")) return cmd_install(argc, argv);
+    if (!strcmp(cmd, "update")) {
+        if (argc != 2) die("usage: orb update");
+        return cmd_update();
+    }
+    if (!strcmp(cmd, "list")) {
+        if (argc != 2) die("usage: orb list");
+        return cmd_list();
     }
     if (!strcmp(cmd, "doctor")) return cmd_doctor();
     bool build = !strcmp(cmd, "build"), run = !strcmp(cmd, "run"), check = !strcmp(cmd, "check");

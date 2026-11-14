@@ -27,7 +27,7 @@ irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | ie
 ```
 
 This downloads and opens the graphical Orb! Setup wizard. You can also download
-`Orb-Setup-0.2.1.1.exe` from the latest GitHub Release.
+`Orb-Setup-0.3.0.exe` from the latest GitHub Release.
 
 ## Component selection
 
@@ -62,7 +62,7 @@ orb new hello
 orb run hello/main.orb
 ```
 
-The compiler itself does not need a package manager. Native Windows compilation uses MinGW-w64; Linux
+The compiler and standard library are self-contained. Git is only required when installing or updating third-party project dependencies with `orb install` / `orb update`; see [PACKAGES.md](PACKAGES.md). Native Windows compilation uses MinGW-w64; Linux
 and macOS use their host assembler/linker as described in [PLATFORMS.md](PLATFORMS.md). WebAssembly
 compilation does not require a native assembler or linker.
 
