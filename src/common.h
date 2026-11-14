@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-#define ORB_VERSION "0.2.1.1"
+#define ORB_VERSION "0.3.0"
 
 typedef struct { int file, line, col; } Pos;
 
