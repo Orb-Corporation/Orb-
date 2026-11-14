@@ -31,6 +31,21 @@ jobs:
             make
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-binutils
+      - name: Validate MinGW installer helper
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "tools/windows/setup-mingw.ps1"),
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_ }
+            throw "The MinGW setup helper contains PowerShell syntax errors."
+          }
+          & "tools/windows/setup-mingw.ps1" -DetectOnly
       - name: Build and smoke-test native Orb! compiler
         shell: msys2 {0}
         run: |
