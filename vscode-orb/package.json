@@ -1,8 +1,8 @@
 {
   "name": "orb-lang",
   "displayName": "Orb!",
-  "description": "Orb! language support: syntax highlighting, snippets, run / build / check commands and inline compiler diagnostics.",
-  "version": "0.2.1.1",
+  "description": "Orb! language support: contextual completions, document symbols, IR inspection, diagnostics, snippets and run/build/check commands.",
+  "version": "0.3.0",
   "publisher": "orb-technologies",
   "license": "MIT",
   "engines": {
@@ -76,6 +76,10 @@
       {
         "command": "orb.showOutput",
         "title": "Orb: Show Output"
+      },
+      {
+        "command": "orb.inspectIR",
+        "title": "Orb: Inspect Intermediate Representation"
       }
     ],
     "menus": {
@@ -89,6 +93,11 @@
       "editor/context": [
         {
           "command": "orb.run",
+          "when": "resourceLangId == orb",
+          "group": "navigation"
+        },
+        {
+          "command": "orb.inspectIR",
           "when": "resourceLangId == orb",
           "group": "navigation"
         }
