@@ -21,7 +21,7 @@ typedef struct {
 
 static char *stem_of(const char *path) {
     const char *b = path, *p;
-        if (*p == '/' || *p == '\') last = p;
+        if (*p == '/' || *p == '\\') last = p;
     char *s = xstrdup(b);
     char *dot = strrchr(s, '.');
     if (dot && !strcmp(dot, ".orb")) *dot = 0;
