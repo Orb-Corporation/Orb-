@@ -1,0 +1,202 @@
+use vec;
+
+// json - strict JSON syntax validation and JSON string encoding.
+// The validator accepts the complete JSON grammar; it does not build a DOM.
+//
+//   use json;
+//   if !json.validate(input) { println("invalid JSON"); }
+//   encoded := json.quote(user_text); // allocated; release with free(encoded.ptr)
+
+struct Parser {
+    source: str,
+    pos: i64,
+}
+
+fn whitespace(c: u8) -> bool {
+    return c == ' ' || c == '\n' || c == '\r' || c == '\t';
+}
+
+fn digit(c: u8) -> bool {
+    return c >= '0' && c <= '9';
+}
+
+fn hex_digit(c: u8) -> bool {
+    return digit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+fn skip_space(p: *Parser) {
+    while p.pos < p.source.len && whitespace(p.source[p.pos]) {
+        p.pos += 1;
+    }
+}
+
+fn consume(p: *Parser, token: str) -> bool {
+    if p.pos + token.len > p.source.len { return false; }
+    if p.source[p.pos..p.pos + token.len] != token { return false; }
+    p.pos += token.len;
+    return true;
+}
+
+fn parse_string(p: *Parser) -> bool {
+    if p.pos >= p.source.len || p.source[p.pos] != '"' { return false; }
+    p.pos += 1;
+    loop {
+        if p.pos >= p.source.len { return false; }
+        c := p.source[p.pos];
+        p.pos += 1;
+        if c == '"' { return true; }
+        if c < 32 { return false; }
+        if c == '\\' {
+            if p.pos >= p.source.len { return false; }
+            escaped := p.source[p.pos];
+            p.pos += 1;
+            if escaped == '"' || escaped == '\\' || escaped == '/' ||
+               escaped == 'b' || escaped == 'f' || escaped == 'n' ||
+               escaped == 'r' || escaped == 't' {
+                continue;
+            }
+            if escaped == 'u' {
+                i := 0;
+                while i < 4 {
+                    if p.pos >= p.source.len || !hex_digit(p.source[p.pos]) { return false; }
+                    p.pos += 1;
+                    i += 1;
+                }
+                continue;
+            }
+            return false;
+        }
+    }
+}
+
+fn parse_number(p: *Parser) -> bool {
+    if p.pos < p.source.len && p.source[p.pos] == '-' { p.pos += 1; }
+    if p.pos >= p.source.len { return false; }
+
+    if p.source[p.pos] == '0' {
+        p.pos += 1;
+        if p.pos < p.source.len && digit(p.source[p.pos]) { return false; }
+    } else {
+        if p.source[p.pos] < '1' || p.source[p.pos] > '9' { return false; }
+        while p.pos < p.source.len && digit(p.source[p.pos]) { p.pos += 1; }
+    }
+
+    if p.pos < p.source.len && p.source[p.pos] == '.' {
+        p.pos += 1;
+        if p.pos >= p.source.len || !digit(p.source[p.pos]) { return false; }
+        while p.pos < p.source.len && digit(p.source[p.pos]) { p.pos += 1; }
+    }
+
+    if p.pos < p.source.len && (p.source[p.pos] == 'e' || p.source[p.pos] == 'E') {
+        p.pos += 1;
+        if p.pos < p.source.len && (p.source[p.pos] == '+' || p.source[p.pos] == '-') { p.pos += 1; }
+        if p.pos >= p.source.len || !digit(p.source[p.pos]) { return false; }
+        while p.pos < p.source.len && digit(p.source[p.pos]) { p.pos += 1; }
+    }
+    return true;
+}
+
+fn parse_value(p: *Parser, depth: i64) -> bool {
+    if depth > 256 { return false; }
+    skip_space(p);
+    if p.pos >= p.source.len { return false; }
+    c := p.source[p.pos];
+
+    if c == '"' { return parse_string(p); }
+    if c == 't' { return consume(p, "true"); }
+    if c == 'f' { return consume(p, "false"); }
+    if c == 'n' { return consume(p, "null"); }
+    if c == '-' || digit(c) { return parse_number(p); }
+
+    if c == '[' {
+        p.pos += 1;
+        skip_space(p);
+        if p.pos < p.source.len && p.source[p.pos] == ']' {
+            p.pos += 1;
+            return true;
+        }
+        loop {
+            if !parse_value(p, depth + 1) { return false; }
+            skip_space(p);
+            if p.pos >= p.source.len { return false; }
+            if p.source[p.pos] == ']' {
+                p.pos += 1;
+                return true;
+            }
+            if p.source[p.pos] != ',' { return false; }
+            p.pos += 1;
+            skip_space(p);
+            if p.pos < p.source.len && p.source[p.pos] == ']' { return false; }
+        }
+    }
+
+    if c == '{' {
+        p.pos += 1;
+        skip_space(p);
+        if p.pos < p.source.len && p.source[p.pos] == '}' {
+            p.pos += 1;
+            return true;
+        }
+        loop {
+            if !parse_string(p) { return false; }
+            skip_space(p);
+            if p.pos >= p.source.len || p.source[p.pos] != ':' { return false; }
+            p.pos += 1;
+            skip_space(p);
+            if !parse_value(p, depth + 1) { return false; }
+            skip_space(p);
+            if p.pos >= p.source.len { return false; }
+            if p.source[p.pos] == '}' {
+                p.pos += 1;
+                return true;
+            }
+            if p.source[p.pos] != ',' { return false; }
+            p.pos += 1;
+            skip_space(p);
+            if p.pos < p.source.len && p.source[p.pos] == '}' { return false; }
+        }
+    }
+
+    return false;
+}
+
+// Returns true only when source contains exactly one valid JSON value.
+pub fn validate(source: str) -> bool {
+    p := Parser{ source: source, pos: 0 };
+    if !parse_value(&p, 0) { return false; }
+    skip_space(&p);
+    return p.pos == source.len;
+}
+
+// Encodes a string as a JSON string literal, including surrounding quotes.
+// The returned memory is allocated and must be released with free(result.ptr).
+pub fn quote(source: str) -> str {
+    out: vec.Vec<u8>;
+    out.push('"');
+    hex := "0123456789abcdef";
+    for c in source {
+        if c == '"' {
+            out.push('\\'); out.push('"');
+        } else if c == '\\' {
+            out.push('\\'); out.push('\\');
+        } else if c == '\n' {
+            out.push('\\'); out.push('n');
+        } else if c == '\r' {
+            out.push('\\'); out.push('r');
+        } else if c == '\t' {
+            out.push('\\'); out.push('t');
+        } else if c == 8 {
+            out.push('\\'); out.push('b');
+        } else if c == 12 {
+            out.push('\\'); out.push('f');
+        } else if c < 32 {
+            out.push('\\'); out.push('u'); out.push('0'); out.push('0');
+            out.push(hex[c >> 4]); out.push(hex[c & 15]);
+        } else {
+            out.push(c);
+        }
+    }
+    out.push('"');
+    encoded := out.items();
+    return encoded as str;
+}

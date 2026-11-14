@@ -15,6 +15,12 @@ static char *quote_arg(const char *a) {
     *w++ = '"';
     return r;
 }
+char *plat_executable_path(const char *fallback) {
+    char buffer[32768];
+    DWORD n = GetModuleFileNameA(NULL, buffer, (DWORD)sizeof(buffer));
+    if (n > 0 && n < sizeof(buffer)) return xstrdup(buffer);
+    return xstrdup(fallback ? fallback : "");
+}
 int plat_run(char **argv, bool quiet) {
     (void)quiet;
     int n = 0;
@@ -47,6 +53,25 @@ char *plat_join(const char *dir, const char *name) { return xsprintf("%s\\%s", d
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <errno.h>
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
+char *plat_executable_path(const char *fallback) {
+#if defined(__linux__)
+    char buffer[4096];
+    ssize_t n = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (n > 0) { buffer[n] = 0; return xstrdup(buffer); }
+#elif defined(__APPLE__)
+    uint32_t size = 0;
+    (void)_NSGetExecutablePath(NULL, &size);
+    if (size > 0) {
+        char *buffer = xcalloc((size_t)size + 1);
+        if (_NSGetExecutablePath(buffer, &size) == 0) return buffer;
+    }
+#endif
+    return xstrdup(fallback ? fallback : "");
+}
 
 int plat_run(char **argv, bool quiet) {
     fflush(stdout); fflush(stderr);

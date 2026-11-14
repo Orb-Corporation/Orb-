@@ -84,7 +84,18 @@ Sym *lookup_unknown_report(Ctx *c, const char *name, Pos p) {
 Sym *module_member(Module *m, const char *name, Pos p) {
     Sym *s = map_get(&m->syms, name);
     if (!s || s->kind == S_MODULE) {
-        diag_error(p, "module '%s' has no member '%s'", m->name, name);
+        const char *best = NULL;
+        int best_distance = 3;
+        for (int i = 0; i < m->syms.cap; i++) {
+            if (!m->syms.keys[i]) continue;
+            int distance = edit_distance(name, m->syms.keys[i]);
+            if (distance < best_distance && distance < (int)strlen(name)) {
+                best_distance = distance;
+                best = m->syms.keys[i];
+            }
+        }
+        if (best) diag_error(p, "module '%s' has no member '%s' (did you mean '%s'?)", m->name, name, best);
+        else diag_error(p, "module '%s' has no member '%s'", m->name, name);
         return NULL;
     }
     if (!s->pub) {

@@ -75,6 +75,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Smoke-test the package-manager CLI
+        shell: pwsh
+        run: |
+          $env:ORB_PYTHON = (Get-Command python).Source
+          & ".\build\orb.exe" pkg --help
       - name: Package the VS Code extension
         shell: pwsh
         run: python tools/package-vsix.py build/dist

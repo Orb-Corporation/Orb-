@@ -44,12 +44,22 @@ done
 
 # VS Code extension (needs node)
 if command -v node >/dev/null 2>&1; then
-    if node --test vscode-orb/test/lib.test.js vscode-orb/test/extension.mock.test.js > $tmp/node.txt 2>&1; then ok; else bad "vs code extension tests" "$(grep -E 'not ok' $tmp/node.txt | head -3)"; fi
+    if node --test vscode-orb/test/lib.test.js vscode-orb/test/features.test.js vscode-orb/test/extension.mock.test.js > $tmp/node.txt 2>&1; then ok; else bad "vs code extension tests" "$(grep -E 'not ok' $tmp/node.txt | head -3)"; fi
 else
     echo "SKIP: VS Code extension tests (Node.js not installed)"
 fi
 
+# Package manager safety tests (Python 3.10+ is needed for the optional package tool).
+if command -v python3 >/dev/null 2>&1 && python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 10))'; then
+    if python3 -m unittest discover -s tests -p 'test_pkg.py' > $tmp/pkg.txt 2>&1; then ok; else bad "package manager tests" "$(tail -8 $tmp/pkg.txt)"; fi
+else
+    echo "SKIP: package manager tests (Python 3.10+ not installed)"
+fi
+
 # command line interface
+if command -v python3 >/dev/null 2>&1 && python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 10))'; then
+    $ORB pkg --help > /dev/null && ok || bad "orb pkg dispatch"
+fi
 $ORB version | grep -q "Orb!" && ok || bad "orb version"
 $ORB check examples/hello.orb | grep -q ok && ok || bad "orb check"
 $ORB run examples/hello.orb | grep -q "Hello, Orb" && ok || bad "orb run"

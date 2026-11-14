@@ -1,15 +1,15 @@
 # Orb! in Visual Studio Code
 
-The extension lives in `vscode-orb/`. A ready-to-install package is `dist/orb-lang-0.1.0.vsix`
+The extension lives in `vscode-orb/`. A ready-to-install package is `build/dist/orb-lang-0.3.0.vsix`
 (rebuild it with `make vsix`).
 
 ## Install
 **From the package (easiest).** In VS Code: *Extensions* view → `...` menu → **Install from VSIX...** → pick
-`orb-lang-0.1.0.vsix`. Reload the window.
+`orb-lang-0.3.0.vsix`. Reload the window.
 
 **From the folder.** Copy `vscode-orb` to
-`%USERPROFILE%\.vscode\extensions\orb-technologies.orb-lang-0.1.0` (Windows) or
-`~/.vscode/extensions/orb-technologies.orb-lang-0.1.0` (macOS/Linux) and restart VS Code.
+`%USERPROFILE%\.vscode\extensions\orb-technologies.orb-lang-0.3.0` (Windows) or
+`~/.vscode/extensions/orb-technologies.orb-lang-0.3.0` (macOS/Linux) and restart VS Code.
 
 **Development.** Open the `vscode-orb` folder in VS Code and press `F5` (Extension Development Host).
 
@@ -18,6 +18,7 @@ PATH, otherwise it goes through WSL automatically (setting `orb.mode`: `auto` | 
 
 ## Using it
 * Open any `.orb` file. Syntax highlighting and snippets work immediately (type `main`, `for`, `fn`, `catch`, ...).
+* **Editor intelligence**: context-aware completions for Orb! keywords, built-ins, declarations and standard-library members; hover help for built-ins/modules/local functions; and function signature help with the active parameter highlighted. This is a lightweight lexical index, not a full semantic language server, so the compiler remains authoritative.
 * **Run** with the ▶ button at the top right of the editor, `Ctrl+Alt+R` (`Cmd+Alt+R`), right-click → *Orb: Run File*, or
   the `▶ Run` CodeLens above `fn main()`. The program runs in an integrated terminal called *Orb*, so
   programs that read from stdin work.
@@ -41,4 +42,4 @@ The extension's logic (path translation, WSL command construction, shell quoting
 unit tests, and `extension.js` is exercised end to end against a mock of the VS Code API using the real compiler
 (diagnostics, run/build commands, CodeLens, tasks). It has **not** been loaded into a real VS Code window in the
 environment where it was written; if something misbehaves, open *Orb: Show Output* and report what it says.
-Run the tests with `node --test vscode-orb/test/lib.test.js vscode-orb/test/extension.mock.test.js`.
+Run the tests with `node --test vscode-orb/test/lib.test.js vscode-orb/test/features.test.js vscode-orb/test/extension.mock.test.js`.

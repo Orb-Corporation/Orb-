@@ -39,6 +39,9 @@ absent), `trim`, `is_space`, `parse_i64(s) -> i64!` (error `ParseError`),
 `read_line() -> str!`. Errors: `IoError`, `NotFound`. Results of the read functions are
 heap-allocated; release them with `free`.
 
+## json
+`validate(source) -> bool` checks whether the entire input is one valid JSON value, with a maximum nesting depth of 256. `quote(source) -> str` returns an allocated JSON string literal with surrounding quotes and JSON escapes; release it with `free(result.ptr)`. This module validates JSON and encodes strings; it does not yet construct or decode a JSON object tree.
+
 ## vec
 Generic growable array:
 ```orb

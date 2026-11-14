@@ -30,7 +30,7 @@ irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | ie
 
 The installer downloads the matching compiler release and opens a component selector. Choose the
 VS Code extension, examples, offline documentation and contributor source files as needed.
-The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `web`) and
+The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `json`, `web`) and
 WebAssembly browser runtime are built in. No npm package or separate standard-library download is needed.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for details.
@@ -42,7 +42,7 @@ GNU binutils on Linux, Xcode command line tools on macOS, MinGW-w64 on Windows.
 
 ```sh
 make            # builds build/orb
-make test       # regression suite; VS Code tests run when Node.js is installed
+make test       # regression suite; VS Code tests need Node.js, package tests need Python 3.10+
 python3 tests/fuzz.py 500  # separate differential fuzzer (not part of make test)
 sudo make install        # optional: installs `orb` to /usr/local/bin
 
@@ -50,6 +50,8 @@ orb run examples/hello.orb
 orb build examples/primes.orb -o primes && ./primes
 orb check examples/bank.orb
 orb new myproject        # creates myproject/main.orb
+cd myproject && orb pkg init
+orb pkg add net yourname/orb-net v1.0.0
 orb version
 ```
 
@@ -59,6 +61,7 @@ orb version
 | `orb run f.orb [args...]` | compile to a temporary executable, run it, propagate its exit code |
 | `orb check f.orb` | parse and type-check only |
 | `orb new name` | create a new project directory |
+| `orb pkg ...` | manage public GitHub source-module dependencies (Python 3.10+ required) |
 | `orb doctor` | check the toolchain, compile and run a test program |
 | `orb version` | print the version |
 
@@ -134,7 +137,7 @@ fn main() {
 }
 ```
 
-Full reference: [docs/LANGUAGE.md](docs/LANGUAGE.md). Standard library: [docs/STDLIB.md](docs/STDLIB.md).
+Full reference: [docs/LANGUAGE.md](docs/LANGUAGE.md). Standard library: [docs/STDLIB.md](docs/STDLIB.md). Package manager: [docs/PACKAGES.md](docs/PACKAGES.md).
 Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What is implemented
@@ -148,8 +151,8 @@ Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 * Generic functions and generic structs (monomorphised, inferred from arguments).
 * Method-call syntax for any function: `list.push(3)` is `push(&list, 3)`.
 * Compiler: lexer → parser → type checker → IR → optimiser → register allocator → target-specific x86-64 assembly.
-* Diagnostics with source line, caret and "did you mean" suggestions.
-* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`, plus target-specific OS layers.
+* Diagnostics with source line, caret and "did you mean" suggestions; VS Code completion, hover documentation and function signature help.
+* Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`, `json` (validation and string escaping), plus target-specific OS layers.
 * Tests: `make test` runs the regression fixtures and CLI checks; VS Code extension tests run when Node.js is installed. The differential fuzzer is separate: `python3 tests/fuzz.py 500`.
 
 ## Performance (measured, reproducible)
@@ -189,6 +192,7 @@ they are.
 * No closures, interfaces, operator overloading, `switch`/`match`, `defer`, threads, or
   multiple return values (return a struct instead). Errors carry a code, not a payload.
 * Strings are immutable byte slices (no Unicode-aware operations).
+* The package manager currently supports public GitHub source modules only; dependencies are explicit and are not resolved transitively.
 * Global initialisers must be compile-time constants.
 
 ## Repository layout

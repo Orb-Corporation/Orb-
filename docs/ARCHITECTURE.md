@@ -95,5 +95,6 @@ The differential fuzzer is a separate, opt-in test and is **not** run by `make t
 ## Not implemented / future work
 
 An integrated assembler and linker (to drop the binutils dependency), inlining, loop
-optimisations, division by constant via multiplication, additional targets (aarch64), debug
-information, a package manager.
+optimisations, division by constant via multiplication, additional targets (aarch64), debug information, a full semantic language server, a native HTTP client,
+and a JSON object decoder. Source-module package management is available through `orb pkg`; see
+[PACKAGES.md](PACKAGES.md).

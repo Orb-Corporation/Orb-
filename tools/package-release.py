@@ -53,6 +53,10 @@ def main() -> int:
             target_name = "extensions" if name == "extensions" else name
             copy_tree(source, stage / "share" / "orb" / target_name)
 
+    package_tools = stage / "share" / "orb" / "tools"
+    package_tools.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "tools" / "orb-pkg.py", package_tools / "orb-pkg.py")
+
     manifest = {
         "name": "Orb!",
         "version": args.version.lstrip("v"),
@@ -61,6 +65,7 @@ def main() -> int:
         "optional": ["vscode", "examples", "docs", "stdlib", "websrc"],
         "standard_library": "Embedded in the compiler; no separate installation required.",
         "web_runtime": "Embedded in the compiler and emitted with WebAssembly launchers.",
+        "package_manager": "Source-only GitHub package helper at share/orb/tools/orb-pkg.py; Python 3.10+ required.",
     }
     (stage / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     (stage / "README.txt").write_text(

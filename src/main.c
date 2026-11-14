@@ -1,4 +1,4 @@
-// Orb! compiler driver: orb build | run | check | doctor | new | version
+// Orb! compiler driver: build | run | check | doctor | new | pkg | version
 #include "sema.h"
 #include "ir.h"
 #include "platform.h"
@@ -36,6 +36,7 @@ static void usage(void) {
            "  orb check <file.orb>\n"
            "  orb doctor               check the toolchain and compile + run a test program\n"
            "  orb new   <name>\n"
+           "  orb pkg   <init|add|install|update|remove|list|verify> ...\n"
            "  orb version\n\n"
            "options:\n"
            "  -o <file>        output executable (default: input name without .orb)\n"
@@ -221,6 +222,56 @@ static int cmd_build(Opts *o, bool run) {
     return st;
 }
 
+static char *dir_of_executable(const char *path) {
+    const char *last = NULL;
+    for (const char *p = path; *p; p++)
+        if (*p == '/' || *p == '\\') last = p;
+    if (!last) return xstrdup(".");
+    if (last == path) return xstrndup(path, 1);
+    return xstrndup(path, (size_t)(last - path));
+}
+
+static bool file_exists(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return false;
+    fclose(f);
+    return true;
+}
+
+static char *find_pkg_script(const char *argv0) {
+    const char *override = getenv("ORB_PKG_SCRIPT");
+    if (override && *override) return xstrdup(override);
+    char *exe = plat_executable_path(argv0);
+    char *dir = dir_of_executable(exe);
+    char *candidate = plat_join(dir, "../share/orb/tools/orb-pkg.py");
+    if (file_exists(candidate)) return candidate;
+    candidate = plat_join(dir, "../tools/orb-pkg.py");
+    if (file_exists(candidate)) return candidate;
+    if (file_exists("tools/orb-pkg.py")) return xstrdup("tools/orb-pkg.py");
+    return NULL;
+}
+
+static int cmd_pkg(int argc, char **argv, const char *argv0) {
+    char *script = find_pkg_script(argv0);
+    if (!script) {
+        fprintf(stderr, "orb: package-manager helper not found; reinstall Orb! or set ORB_PKG_SCRIPT\n");
+        return 1;
+    }
+    const char *python = getenv("ORB_PYTHON");
+#if defined(_WIN32)
+    if (!python || !*python) python = "python";
+#else
+    if (!python || !*python) python = "python3";
+#endif
+    char **av = xcalloc(sizeof(char *) * (size_t)(argc + 2));
+    int n = 0;
+    av[n++] = (char *)python;
+    av[n++] = script;
+    for (int i = 2; i < argc; i++) av[n++] = argv[i];
+    av[n] = NULL;
+    return plat_run(av, false);
+}
+
 static int cmd_new(const char *name) {
     if (plat_mkdir(name) != 0) die("cannot create directory '%s': %s", name, strerror(errno));
     char *p = plat_join(name, "main.orb");
@@ -309,6 +360,7 @@ int main(int argc, char **argv) {
         return cmd_new(argv[2]);
     }
     if (!strcmp(cmd, "doctor")) return cmd_doctor();
+    if (!strcmp(cmd, "pkg")) return cmd_pkg(argc, argv, argv[0]);
     bool build = !strcmp(cmd, "build"), run = !strcmp(cmd, "run"), check = !strcmp(cmd, "check");
     if (!build && !run && !check) { fprintf(stderr, "orb: unknown command '%s'\n\n", cmd); usage(); return 1; }
     Opts o = {0};

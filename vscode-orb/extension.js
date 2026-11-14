@@ -7,6 +7,7 @@ const cp = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const L = require('./lib');
+const E = require('./features');
 
 let diagnostics, output, terminal, warnedMissing = false;
 const perDocUris = new Map();
@@ -185,6 +186,44 @@ function activate(context) {
         vscode.workspace.onDidCloseTextDocument(d => { for (const u of perDocUris.get(d.uri.toString()) || []) diagnostics.delete(vscode.Uri.parse(u)); perDocUris.delete(d.uri.toString()); }),
         vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('orb')) { warnedMissing = false; vscode.workspace.textDocuments.forEach(maybeCheck); } }),
         vscode.languages.registerCodeLensProvider({ language: 'orb' }, new MainLens()),
+        vscode.languages.registerCompletionItemProvider({ language: 'orb' }, {
+            provideCompletionItems(doc, position) {
+                return E.complete(doc.getText(), doc.offsetAt(position)).map(item => {
+                    const kinds = vscode.CompletionItemKind || {};
+                    const kind = item.kind === 'function' ? kinds.Function
+                        : item.kind === 'module' ? kinds.Module
+                        : item.kind === 'variable' ? kinds.Variable
+                        : item.kind === 'keyword' ? kinds.Keyword
+                        : item.kind === 'struct' ? kinds.Struct
+                        : item.kind === 'enum' ? kinds.Enum
+                        : item.kind === 'const' ? kinds.Constant : kinds.Text;
+                    const result = new vscode.CompletionItem(item.label, kind);
+                    result.detail = item.detail;
+                    if (item.documentation) result.documentation = item.documentation;
+                    return result;
+                });
+            },
+        }, '.', ':'),
+        vscode.languages.registerHoverProvider({ language: 'orb' }, {
+            provideHover(doc, position) {
+                const info = E.hover(doc.getText(), doc.offsetAt(position));
+                return info ? new vscode.Hover(info) : undefined;
+            },
+        }),
+        vscode.languages.registerSignatureHelpProvider({ language: 'orb' }, {
+            provideSignatureHelp(doc, position) {
+                const info = E.signature(doc.getText(), doc.offsetAt(position));
+                if (!info) return undefined;
+                const signature = new vscode.SignatureInformation(info.label);
+                signature.parameters = info.parameters.map(p => new vscode.ParameterInformation(p));
+                const help = new vscode.SignatureHelp();
+                help.signatures = [signature];
+                help.activeSignature = 0;
+                help.activeParameter = info.activeParameter;
+                return help;
+            },
+        }, '(', ','),
+
         vscode.window.onDidCloseTerminal(t => { if (t === terminal) terminal = undefined; })
     );
     vscode.workspace.textDocuments.forEach(maybeCheck);

@@ -13,11 +13,17 @@ function makeVscode(state) {
     class Position { constructor(l, c) { this.line = l; this.character = c; } }
     class Range { constructor(a, b, c, d) { this.start = new Position(a, b); this.end = new Position(c, d); } }
     class Diagnostic { constructor(range, message, severity) { this.range = range; this.message = message; this.severity = severity; } }
+    class CompletionItem { constructor(label, kind) { this.label = label; this.kind = kind; } }
+    class Hover { constructor(contents) { this.contents = contents; } }
+    class ParameterInformation { constructor(label) { this.label = label; } }
+    class SignatureInformation { constructor(label) { this.label = label; this.parameters = []; } }
+    class SignatureHelp { constructor() { this.signatures = []; this.activeSignature = 0; this.activeParameter = 0; } }
     const handlers = {};
     const commands = {};
     const config = { path: orb, mode: 'native', wslDistro: '', extraArgs: [], checkOnSave: true };
     return {
-        Position, Range, Diagnostic,
+        Position, Range, Diagnostic, CompletionItem, Hover, ParameterInformation, SignatureInformation, SignatureHelp,
+        CompletionItemKind: { Text: 0, Method: 1, Function: 3, Variable: 6, Module: 9, Keyword: 14, Struct: 22, Enum: 13, Constant: 21 },
         DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2 },
         Uri: { file: p => ({ fsPath: p, scheme: 'file', toString: () => 'file://' + p }), parse: s => ({ fsPath: s.replace('file://', ''), toString: () => s }) },
         CodeLens: class { constructor(range, command) { this.range = range; this.command = command; } },
@@ -32,6 +38,9 @@ function makeVscode(state) {
                 return { set: (u, d) => m.set(u.fsPath, d), delete: u => m.delete(u.fsPath), clear: () => m.clear(), dispose() {} };
             },
             registerCodeLensProvider: (sel, p) => { state.lens = p; return { dispose() {} }; },
+            registerCompletionItemProvider: (sel, p) => { state.completion = p; return { dispose() {} }; },
+            registerHoverProvider: (sel, p) => { state.hover = p; return { dispose() {} }; },
+            registerSignatureHelpProvider: (sel, p) => { state.signature = p; return { dispose() {} }; },
         },
         window: {
             createOutputChannel: () => ({ appendLine: l => state.log.push(l), show() {}, dispose() {} }),
@@ -65,6 +74,7 @@ test('extension: check publishes diagnostics, run/build use the terminal', async
     fs.writeFileSync(good, 'fn main() {\n    println("hi");\n}\n');
     const state = { log: [], warn: [], err: [], terminals: [], docs: [], dir };
     const doc = (f) => ({ fileName: f, uri: { fsPath: f, scheme: 'file', toString: () => 'file://' + f }, languageId: 'orb', isUntitled: false, isDirty: false,
+        getText: () => fs.readFileSync(f, 'utf8'), offsetAt: p => fs.readFileSync(f, 'utf8').split('\n').slice(0, p.line).join('\n').length + (p.line ? 1 : 0) + p.character,
         lineCount: fs.readFileSync(f, 'utf8').split('\n').length, lineAt: i => ({ text: fs.readFileSync(f, 'utf8').split('\n')[i] }),
         getWordRangeAtPosition: () => undefined, save: async () => {} });
     const vs = makeVscode(state);
@@ -111,6 +121,18 @@ test('extension: check publishes diagnostics, run/build use the terminal', async
         const lenses = state.lens.provideCodeLenses(doc(good));
         assert.strictEqual(lenses.length, 2);
         assert.strictEqual(lenses[0].range.start.line, 0);
+
+        // completion, hover and signature help providers are registered and usable
+        assert.ok(state.completion && state.hover && state.signature);
+        const completionSource = 'use math;\\nfn main() { math.sq';
+        const completionDoc = { getText: () => completionSource, offsetAt: () => completionSource.length };
+        assert.ok(state.completion.provideCompletionItems(completionDoc, {}).some(x => x.label === 'sqrt'));
+        const hoverSource = 'fn main() { println(1); }';
+        const hoverDoc = { getText: () => hoverSource, offsetAt: () => hoverSource.indexOf('println') + 2 };
+        assert.match(state.hover.provideHover(hoverDoc, {}).contents, /standard output/);
+        const signatureSource = 'fn add(a: i64, b: i64) -> i64 { return a; }\\nfn main() { add(1, ';
+        const signatureDoc = { getText: () => signatureSource, offsetAt: () => signatureSource.length };
+        assert.equal(state.signature.provideSignatureHelp(signatureDoc, {}).activeParameter, 1);
 
         // tasks
         const tasks = state.taskProvider.provideTasks();

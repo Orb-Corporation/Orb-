@@ -2,7 +2,7 @@ CC      ?= gcc
 CFLAGS  ?= -O2 -std=gnu11 -Wall -Wextra -Wno-unused-parameter -Wno-clobbered -Wno-unknown-warning-option
 PREFIX  ?= /usr/local
 SRC      = src/util.c src/lexer.c src/parser.c src/types.c src/sema.c src/check.c src/lower.c src/opt.c src/emit.c src/wasm.c src/platform.c src/main.c
-STD      = std/core.orb std/math.orb std/strings.orb std/io.orb std/vec.orb std/os_linux.orb std/os_macos.orb std/os_windows.orb std/os_wasm.orb std/web.orb
+STD      = std/core.orb std/math.orb std/strings.orb std/io.orb std/vec.orb std/os_linux.orb std/os_macos.orb std/os_windows.orb std/os_wasm.orb std/web.orb std/json.orb
 WEB_EXAMPLES = counter todo form fetch stopwatch starter
 BUILD    = build
 
@@ -43,7 +43,9 @@ bench: $(BUILD)/orb
 
 install: $(BUILD)/orb
 	install -d $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(PREFIX)/share/orb/tools
 	install -m 755 $(BUILD)/orb $(DESTDIR)$(PREFIX)/bin/orb
+	install -m 644 tools/orb-pkg.py $(DESTDIR)$(PREFIX)/share/orb/tools/orb-pkg.py
 
 vsix:
 	python3 tools/package-vsix.py $(BUILD)/dist
