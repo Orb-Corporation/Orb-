@@ -53,12 +53,19 @@ def main() -> int:
             target_name = "extensions" if name == "extensions" else name
             copy_tree(source, stage / "share" / "orb" / target_name)
 
+    # The package manager is a companion tool; the compiler itself remains Python-free.
+    package_tools = stage / "share" / "orb" / "tools"
+    package_tools.mkdir(parents=True, exist_ok=True)
+    for filename in ("orb-pkg.py", "orb-pkg", "orb-pkg.cmd"):
+        shutil.copy2(ROOT / "tools" / filename, package_tools / filename)
+    (package_tools / "orb-pkg").chmod(0o755)
+
     manifest = {
         "name": "Orb!",
         "version": args.version.lstrip("v"),
         "platform": args.platform,
         "required": ["compiler"],
-        "optional": ["vscode", "examples", "docs", "stdlib", "websrc"],
+        "optional": ["vscode", "examples", "docs", "stdlib", "websrc", "orb-pkg"],
         "standard_library": "Embedded in the compiler; no separate installation required.",
         "web_runtime": "Embedded in the compiler and emitted with WebAssembly launchers.",
     }
