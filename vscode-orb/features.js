@@ -63,7 +63,7 @@ function declarations(text) {
   const re = /\b(?:pub\s+)?(fn|struct|enum|error|const)\s+([A-Za-z_][A-Za-z0-9_]*)/g;
   let match;
   while ((match = re.exec(text))) {
-    found.push({ label: match[2], kind: match[1], detail: match[1] + ' declaration' });
+    found.push({ label: match[2], kind: match[1] === 'fn' ? 'function' : match[1], detail: match[1] + ' declaration' });
   }
   const vars = /(?:^|[;{}\n])\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?::=|:\s*[A-Za-z_][A-Za-z0-9_<>,*\[\]!]*\s*=)/g;
   while ((match = vars.exec(text))) found.push({ label: match[1], kind: 'variable', detail: 'Local or global variable' });
