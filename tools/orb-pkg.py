@@ -9,6 +9,7 @@ import json
 import re
 import sys
 import urllib.request
+import urllib.parse
 import zipfile
 from pathlib import Path, PurePosixPath
 
@@ -88,7 +89,7 @@ def init_project(name: str | None = None) -> Path:
 def download_source_archive(repository: str, ref: str) -> tuple[bytes, str]:
     if not REPO_RE.fullmatch(repository):
         raise PackageError("repository must use the owner/repository form")
-    url = f"https://api.github.com/repos/{repository}/zipball/{urllib.request.quote(ref, safe='')}"
+    url = f"https://api.github.com/repos/{repository}/zipball/{urllib.parse.quote(ref, safe='')}"
     request = urllib.request.Request(url, headers={
         "Accept": "application/vnd.github+json",
         "User-Agent": "Orb-Package-Manager/0.3",
@@ -166,6 +167,14 @@ def install_one(root: Path, module: str, repository: str, ref: str, lock: dict) 
                 raise PackageError(f"refusing to overwrite existing file: {filename}")
             if sha256(destination.read_bytes()) != old_hash:
                 raise PackageError(f"{filename} was modified locally; back it up or remove it before updating")
+
+    for filename, old_hash in previous_files.items():
+        if filename not in files:
+            stale = root / safe_archive_path(filename)
+            if stale.is_file() and sha256(stale.read_bytes()) == old_hash:
+                stale.unlink()
+            elif stale.exists():
+                print(f"warning: kept locally modified stale file {filename}", file=sys.stderr)
 
     for filename, data in files.items():
         temporary = root / (filename + ".orb-pkg.tmp")
