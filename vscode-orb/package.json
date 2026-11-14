@@ -2,7 +2,7 @@
   "name": "orb-lang",
   "displayName": "Orb!",
   "description": "Orb! language support: syntax highlighting, snippets, run / build / check commands and inline compiler diagnostics.",
-  "version": "0.2.1",
+  "version": "0.2.1.1",
   "publisher": "orb-technologies",
   "license": "MIT",
   "engines": {

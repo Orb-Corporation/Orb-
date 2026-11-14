@@ -1,6 +1,6 @@
 #define AppName "Orb!"
 #ifndef AppVersion
-  #define AppVersion "0.2.1"
+  #define AppVersion "0.2.1.1"
 #endif
 #define AppPublisher "Orb Technologies"
 
@@ -24,8 +24,8 @@ Compression=lzma2
 SolidCompression=yes
 
 [Types]
-Name: "compact"; Description: "Compiler only"
 Name: "full"; Description: "Full installation"
+Name: "compact"; Description: "Compiler only"
 Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Components]
@@ -38,6 +38,7 @@ Name: "websrc"; Description: "Browser host source (for Web runtime contributors)
 
 [Tasks]
 Name: "addtopath"; Description: "Add Orb! to the current user's PATH"; GroupDescription: "Optional integrations:"; Flags: checkedonce
+Name: "mingw"; Description: "Install or configure MinGW-w64 for native Windows builds (GCC + GNU Binutils)"; GroupDescription: "Native build tools:"; Flags: checkedonce
 
 [Files]
 Source: "..\build\orb.exe"; DestDir: "{app}\bin"; Flags: ignoreversion; Components: compiler
@@ -45,13 +46,14 @@ Source: "..\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion recurse
 Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: docs
 Source: "..\std\*"; DestDir: "{app}\std"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: stdlib
 Source: "..\web\orb.js"; DestDir: "{app}\web"; Flags: ignoreversion; Components: websrc
-Source: "..\build\dist\orb-lang-0.2.1.vsix"; DestDir: "{app}\extensions"; Flags: ignoreversion; Components: vscode
+Source: "..\build\dist\orb-lang-0.2.1.1.vsix"; DestDir: "{app}\extensions"; Flags: ignoreversion; Components: vscode
+Source: "..\tools\windows\setup-mingw.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\Orb! Documentation"; Filename: "{app}\docs\DISTRIBUTION.md"; Components: docs
 
 [Run]
-Filename: "{cmd}"; Parameters: "/C code --install-extension ""{app}\extensions\orb-lang-0.2.1.vsix"" --force"; StatusMsg: "Installing the Orb! extension into Visual Studio Code..."; Flags: runhidden waituntilterminated; Components: vscode; Check: CodeCliAvailable
+Filename: "{cmd}"; Parameters: "/C code --install-extension ""{app}\extensions\orb-lang-0.2.1.1.vsix"" --force"; StatusMsg: "Installing the Orb! extension into Visual Studio Code..."; Flags: runhidden waituntilterminated; Components: vscode; Check: CodeCliAvailable
 
 [Code]
 function HasPathEntry(const ExistingPath, Dir: string): Boolean;
@@ -118,10 +120,29 @@ begin
   RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', NewPath);
 end;
 
+procedure ConfigureMinGW;
+var
+  ScriptPath, PowerShellPath, Params: string;
+  ResultCode: Integer;
+begin
+  if not WizardIsTaskSelected('mingw') then Exit;
+  ExtractTemporaryFile('setup-mingw.ps1');
+  ScriptPath := ExpandConstant('{tmp}\setup-mingw.ps1');
+  PowerShellPath := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  Params := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ScriptPath + '" -InstallIfMissing';
+  if not Exec(PowerShellPath, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+    MsgBox('Orb! could not start the MinGW-w64 setup helper. The compiler is installed, but native Windows builds may need manual toolchain setup.', mbInformation, MB_OK)
+  else if ResultCode <> 0 then
+    MsgBox('MinGW-w64 setup did not complete. Orb! is still installed; native Windows builds may need manual setup. See docs/PLATFORMS.md.', mbInformation, MB_OK);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if (CurStep = ssPostInstall) and WizardIsTaskSelected('addtopath') then
-    AddOrbToPath;
+  if CurStep = ssPostInstall then begin
+    ConfigureMinGW;
+    if WizardIsTaskSelected('addtopath') then
+      AddOrbToPath;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
