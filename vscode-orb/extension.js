@@ -135,7 +135,7 @@ const MODULE_MEMBERS = {
     io: ['read_file', 'write_file', 'read_stdin', 'read_line'],
     file: ['read_text', 'write_text', 'read_stdin', 'read_line', 'free_text'],
     vec: ['Vec', 'push', 'get', 'set', 'pop', 'count', 'items', 'free_vec'],
-    json: ['parse', 'release', 'kind', 'len', 'get', 'at', 'key_at', 'as_string', 'as_number', 'as_bool', 'stringify', 'object', 'array', 'null', 'from_number', 'from_string', 'from_bool', 'set', 'push'],
+    json: ['parse', 'release', 'kind', 'len', 'get', 'at', 'key_at', 'as_string', 'as_number', 'as_bool', 'stringify', 'object', 'array', 'null_value', 'from_number', 'from_string', 'from_bool', 'set', 'push'],
     http: ['request', 'get', 'post_json', 'status', 'ok', 'failed', 'body_text', 'header', 'free_text'],
     web: ['get_element', 'query', 'create', 'set_text', 'on_click', 'fetch', 'fetch_get', 'fetch_post_json', 'status', 'response_ok', 'failed', 'body_text', 'json_parse', 'json_stringify']
 };
