@@ -19,7 +19,7 @@ MAX_ARCHIVE = 32 * 1024 * 1024
 MAX_TOTAL_SOURCE = 16 * 1024 * 1024
 MODULE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-SOURCE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\\.orb$")
+SOURCE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.orb$")
 
 
 class PackageError(Exception):
@@ -35,7 +35,7 @@ def valid_module_name(name: str) -> bool:
 
 
 def safe_archive_path(name: str) -> PurePosixPath:
-    if "\\\\" in name or "\\0" in name:
+    if "\\" in name or "\x00" in name:
         raise PackageError(f"unsafe path separator in source archive: {name!r}")
     path = PurePosixPath(name)
     if path.is_absolute() or not path.parts or any(part in ("..", "") for part in path.parts):
