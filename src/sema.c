@@ -599,6 +599,39 @@ static const char *std_file_for(const char *name) {
     return name;
 }
 
+/* Find the project root by walking upward to orb.toml. This also works for
+   modules inside .orb/packages/<dependency>/src/. */
+static char *project_root_for_path(const char *path) {
+    char *dir = dir_of(path);
+    for (int depth = 0; depth < 64; depth++) {
+        char *manifest = xsprintf("%s/orb.toml", dir);
+        char *contents = read_file_text(manifest);
+        if (contents) return dir;
+        if (!strcmp(dir, ".") || !strcmp(dir, "/") || !strcmp(dir, "\\\\") || !*dir)
+            break;
+        char *parent = dir_of(dir);
+        if (!strcmp(parent, dir)) break;
+        dir = parent;
+    }
+    return NULL;
+}
+
+static Module *load_package_module(Module *from, const char *name) {
+    char *root = project_root_for_path(from->path);
+    if (!root) return NULL;
+    char *candidates[] = {
+        xsprintf("%s/.orb/packages/%s/%s.orb", root, name, name),
+        xsprintf("%s/.orb/packages/%s/src/%s.orb", root, name, name),
+        xsprintf("%s/.orb/packages/%s/lib/%s.orb", root, name, name),
+        xsprintf("%s/.orb/packages/%s/src/lib.orb", root, name),
+    };
+    for (size_t i = 0; i < sizeof candidates / sizeof candidates[0]; i++) {
+        char *text = read_file_text(candidates[i]);
+        if (text) return load_module_text(candidates[i], name, text, true);
+    }
+    return NULL;
+}
+
 static Module *find_module(Module *from, const char *name, Pos p) {
     Module *m = map_get(&loaded, name);
     if (m) return m;
@@ -606,6 +639,8 @@ static Module *find_module(Module *from, const char *name, Pos p) {
     char *cand = xsprintf("%s/%s.orb", dir_of(from->path), name);
     char *text = std_only ? NULL : read_file_text(cand);
     if (text) return load_module_text(cand, name, text, true);
+    Module *package = load_package_module(from, name);
+    if (package) return package;
     if (!strcmp(name, "web") && g_target != TGT_WASM) {
         diag_error(p, "the standard module `web` talks to a browser: build with --target wasm (see docs/WEB.md)");
         return NULL;
