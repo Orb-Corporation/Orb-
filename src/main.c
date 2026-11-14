@@ -360,6 +360,12 @@ static int install_dependency(const char *name, const char *url) {
         fprintf(stderr, "orb: dependencies must use an HTTPS Git repository URL\n");
         return 1;
     }
+    for (const unsigned char *p = (const unsigned char *)url; *p; p++) {
+        if (*p <= 0x20 || *p == 0x7f || *p == 0x22 || *p == 0x5c) {
+            fprintf(stderr, "orb: dependency URL contains an unsupported character\\n");
+            return 1;
+        }
+    }
     if (!read_file_text("orb.toml")) {
         fprintf(stderr, "orb: no orb.toml found; run orb init first\n");
         return 1;
@@ -539,7 +545,10 @@ int main(int argc, char **argv) {
         if (argc < 3) die("usage: orb new <name>");
         return cmd_new(argv[2]);
     }
-    if (!strcmp(cmd, "init")) return cmd_init(argc >= 3 ? argv[2] : NULL);
+    if (!strcmp(cmd, "init")) {
+        if (argc > 3) die("usage: orb init [name]");
+        return cmd_init(argc == 3 ? argv[2] : NULL);
+    }
     if (!strcmp(cmd, "install")) return cmd_install(argc, argv);
     if (!strcmp(cmd, "update")) {
         if (argc != 2) die("usage: orb update");
