@@ -31,7 +31,7 @@ orb doctor
 
 ### Graphical installer
 
-Download `Orb-Setup-0.2.1.1.exe` from the latest GitHub Release. The wizard installs the compiler and
+Download `Orb-Setup-0.3.0.exe` from the latest GitHub Release. The wizard installs the compiler and
 lets you select the VS Code extension, examples, offline documentation and editable source files.
 The MinGW-w64 task is selected by default: it reuses a working MinGW toolchain if present, or installs
 MSYS2 for the current user, adds the UCRT64 GCC toolchain, and updates the current user's PATH. You can
