@@ -26,6 +26,10 @@ class PackageManagerTests(unittest.TestCase):
             orb_pkg.safe_archive_path("/absolute/file.orb")
         with self.assertRaises(orb_pkg.PackageError):
             orb_pkg.safe_archive_path("C:/outside/file.orb")
+        with self.assertRaises(orb_pkg.PackageError):
+            orb_pkg.safe_archive_path("repo/src/.." + chr(92) + "escape.orb")
+        with self.assertRaises(orb_pkg.PackageError):
+            orb_pkg.safe_archive_path("repo/src/module.orb:alternate-stream")
 
     def test_source_files_extracts_only_sibling_orb_sources(self):
         archive = io.BytesIO()
