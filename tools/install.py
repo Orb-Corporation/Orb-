@@ -36,6 +36,7 @@ def choose_components() -> set[str]:
         ("docs", "Offline documentation", True),
         ("stdlib", "Standard-library source files (for contributors)", False),
         ("websrc", "Browser host source (for Web runtime contributors)", False),
+        ("pkg", "orb-pkg Git package manager (Python 3.11+ and Git)", True),
         ("path", "Add Orb! to the current user's PATH", True),
     ]
     print("\nComponents")
@@ -167,6 +168,7 @@ def main() -> int:
         ("docs", "Offline documentation"),
         ("stdlib", "Standard-library source files"),
         ("websrc", "Browser host source"),
+        ("pkg", "orb-pkg package manager"),
         ("path", "PATH integration"),
     ]:
         if component in selected:
@@ -202,6 +204,11 @@ def main() -> int:
     if "websrc" in selected:
         (share_dir / "web").mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / "web" / "orb.js", share_dir / "web" / "orb.js")
+    if "pkg" in selected:
+        for filename in ("orb-pkg.py", "orb-pkg", "orb-pkg.cmd"):
+            shutil.copy2(ROOT / "tools" / filename, bin_dir / filename)
+        if os.name != "nt":
+            (bin_dir / "orb-pkg").chmod(0o755)
 
     if "vscode" in selected:
         extension_dir = share_dir / "extensions"
@@ -232,6 +239,9 @@ def main() -> int:
     print("\nInstallation complete.")
     print("Open a new terminal, then try:")
     print("  orb doctor")
+    if "pkg" in selected:
+        print("  orb-pkg init --name hello")
+        print("  orb-pkg add package_name https://github.com/owner/package.git")
     print("  orb new hello")
     print("  orb run hello/main.orb")
     print("For Orb! Web: orb build main.orb --target wasm -o app.wasm")
