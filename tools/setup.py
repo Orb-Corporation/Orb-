@@ -73,7 +73,7 @@ def choose_components() -> set[str]:
     print("             they are already inside the compiler.")
     for index, (_, label, selected) in enumerate(items, 1):
         print(f"  {index}. [{'x' if selected else ' '}] {label}")
-    print("\nPress Enter for defaults, or enter numbers separated by commas (e.g. 1,2,3,6).")
+    print("\nPress Enter for defaults, or enter numbers separated by commas (e.g. 1,2,3,6,7).")
     raw = input("Selections: ").strip().lower()
     if not raw:
         return {key for key, _, default in items if default}
