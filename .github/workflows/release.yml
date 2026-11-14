@@ -27,6 +27,9 @@ jobs:
           python -m pip install playwright
           python -m playwright install --with-deps chromium
           make test-web
+      - name: Smoke-test the package-manager CLI
+        shell: msys2 {0}
+        run: ./build/orb.exe pkg --help
       - name: Package VS Code extension
         run: python tools/package-vsix.py build/dist
       - name: Create Linux release archive
