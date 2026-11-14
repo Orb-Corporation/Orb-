@@ -5,7 +5,7 @@ Language support and tooling for [Orb!](https://github.com/) — native performa
 * Syntax highlighting, snippets (`main`, `fn`, `for`, `struct`, `catch`, ...), bracket and comment handling
 * **Run**: ▶ button in the editor title bar, `Ctrl+Alt+R` (`Cmd+Alt+R` on macOS), or the `▶ Run` CodeLens above `fn main`
 * **Build** (`Ctrl+Alt+B`), **Check**, **Run with arguments**, **Doctor** from the command palette (`Orb: ...`)
-* **Inline errors**: files are type-checked when opened and saved; compiler errors appear in the editor and the Problems panel
+* **Contextual completions**: language keywords, local declarations, imported modules and standard-library members\n* **Outline**: document symbols for functions, structs, enums and constants\n* **Inspect IR**: inspect the compiler's intermediate representation from the main-function CodeLens or command palette\n* **Inline errors**: files are type-checked when opened and saved; compiler errors appear in the editor and the Problems panel
 * Tasks (`"type": "orb"`) with a problem matcher (`$orb`)
 
 ## Requirements
