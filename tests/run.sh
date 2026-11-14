@@ -44,7 +44,7 @@ done
 
 # VS Code extension (needs node)
 if command -v node >/dev/null 2>&1; then
-    if node --test vscode-orb/test/lib.test.js vscode-orb/test/extension.mock.test.js > $tmp/node.txt 2>&1; then ok; else bad "vs code extension tests" "$(grep -E 'not ok' $tmp/node.txt | head -3)"; fi
+    if node --test vscode-orb/test/lib.test.js vscode-orb/test/language-tools.test.js vscode-orb/test/extension.mock.test.js > $tmp/node.txt 2>&1; then ok; else bad "vs code extension tests" "$(grep -E 'not ok' $tmp/node.txt | head -3)"; fi
 else
     echo "SKIP: VS Code extension tests (Node.js not installed)"
 fi
