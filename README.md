@@ -30,7 +30,7 @@ irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | ie
 
 The installer downloads the matching compiler release and opens a component selector. Choose the
 VS Code extension, examples, offline documentation and contributor source files as needed.
-The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `web`) and
+The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `file`, `json`, `http`, `web`) and
 WebAssembly browser runtime are built in. No npm package or separate standard-library download is needed.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for details.
@@ -88,7 +88,7 @@ assemble) on a Linux-only machine and have **not been executed on real Windows/m
 tells you whether your machine works. Details: [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
 **Visual Studio Code**: run `make vsix` to create the extension under `build/dist/` for highlighting, snippets, contextual completions, document outline, ▶ Run / Build / Check / Inspect IR,
-inline compiler errors, tasks and WSL support on Windows. A Dev Container is included for Codespaces/Docker.
+inline compiler errors, document outline, contextual completions, Inspect IR, tasks and WSL support on Windows. A Dev Container is included for Codespaces/Docker.
 Details: [docs/VSCODE.md](docs/VSCODE.md).
 
 ## Orb! in the browser (HTML + CSS + Orb!)
@@ -142,7 +142,7 @@ fn main() {
 ```
 
 Project dependencies: [docs/PACKAGES.md](docs/PACKAGES.md). Full reference: [docs/LANGUAGE.md](docs/LANGUAGE.md). Standard library: [docs/STDLIB.md](docs/STDLIB.md).
-Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Project dependencies: [docs/PACKAGES.md](docs/PACKAGES.md). Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What is implemented
 
