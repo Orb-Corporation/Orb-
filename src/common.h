@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-#define ORB_VERSION "0.2.1.1"
+#define ORB_VERSION "0.3.0"
 
 typedef struct { int file, line, col; } Pos;
 
@@ -23,12 +23,10 @@ char *xstrdup(const char *s);
 char *xstrndup(const char *s, size_t n);
 char *xsprintf(const char *fmt, ...);
 
-// string-keyed hash map (keys are not copied)
 typedef struct { const char **keys; void **vals; int cap, n; } Map;
 void *map_get(Map *m, const char *k);
 void map_put(Map *m, const char *k, void *v);
 
-// sources & diagnostics
 int add_source(const char *path, char *text);
 const char *source_path(int file);
 char *read_file_text(const char *path);
