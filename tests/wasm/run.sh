@@ -11,6 +11,7 @@ bad() { fail=$((fail+1)); echo "FAIL: $*"; }
 for f in tests/ok/*.orb; do
     n=$(basename $f .orb)
     [ $n = wordcount ] && continue          # needs stdin
+    [ $n = file_module ] && continue       # native filesystem I/O is not a WASM API          # needs stdin
     want=tests/ok/$n.out; [ -f tests/wasm/$n.out ] && want=tests/wasm/$n.out    # argc / files differ on the web
     for mode in "" "--wasm-dispatch" "--no-opt"; do
         if $ORB build $f --target wasm $mode -o $TMP/$n.wasm 2>$TMP/err.txt; then
