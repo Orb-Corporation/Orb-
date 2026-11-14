@@ -68,7 +68,7 @@ def choose_components() -> set[str]:
     ]
     print("\nComponents")
     print("  [required] Orb! compiler + embedded standard modules + WebAssembly runtime")
-    print("             math, strings, io, vec and web are available through use <module>;")
+    print("             math, strings, io, vec, json and web are available through use <module>;")
     print("             they are already inside the compiler.")
     for index, (_, label, selected) in enumerate(items, 1):
         print(f"  {index}. [{'x' if selected else ' '}] {label}")
@@ -153,7 +153,7 @@ def main() -> int:
         print("\nInstallation plan")
         print(f"  Version: Orb! {version}")
         print(f"  Compiler: {bin_dir / 'orb'}")
-        print("  Built in: math, strings, vec, io, web, WebAssembly browser runtime")
+        print("  Built in: math, strings, vec, io, json, web, WebAssembly browser runtime")
         for key, label in (
             ("vscode", "VS Code extension"), ("examples", "Example projects"),
             ("docs", "Offline documentation"), ("stdlib", "Standard-library source"),
@@ -186,6 +186,11 @@ def main() -> int:
             (bin_dir / "orb").chmod((bin_dir / "orb").stat().st_mode | 0o111)
 
             source_share = extracted / "share" / "orb"
+            package_tool = source_share / "tools" / "orb-pkg.py"
+            if package_tool.is_file():
+                package_tool_dir = share_dir / "tools"
+                package_tool_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(package_tool, package_tool_dir / "orb-pkg.py")
             components = {
                 "examples": "examples", "docs": "docs", "stdlib": "stdlib",
                 "websrc": "websrc", "vscode": "extensions",
