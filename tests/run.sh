@@ -2,7 +2,8 @@
 # Orb! test suite: runs every program in tests/ok (stdout compared with .out),
 # tests/err (compile errors) and tests/panic (runtime panics).
 cd "$(dirname "$0")/.." || exit 1
-ORB=./build/orb
+ROOT=$(pwd)
+ORB="$ROOT/build/orb"
 pass=0; fail=0
 tmp=$(mktemp -d)
 
@@ -49,11 +50,14 @@ else
     echo "SKIP: VS Code extension tests (Node.js not installed)"
 fi
 
+# Project scaffolding, dependency lookup and package-module resolution
+if sh tests/pkg.sh > "$tmp/pkg.txt" 2>&1; then ok; else bad "package manager smoke tests" "$(cat "$tmp/pkg.txt")"; fi
+
 # command line interface
 $ORB version | grep -q "Orb!" && ok || bad "orb version"
 $ORB check examples/hello.orb | grep -q ok && ok || bad "orb check"
 $ORB run examples/hello.orb | grep -q "Hello, Orb" && ok || bad "orb run"
 
-rm -rf $tmp
+rm -f .orb-v030-test.tmp\nrm -rf $tmp
 echo "passed: $pass, failed: $fail"
 [ $fail -eq 0 ]
