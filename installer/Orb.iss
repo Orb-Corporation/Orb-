@@ -48,6 +48,8 @@ Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs 
 Source: "..\std\*"; DestDir: "{app}\std"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: stdlib
 Source: "..\web\orb.js"; DestDir: "{app}\web"; Flags: ignoreversion; Components: websrc
 Source: "..\build\dist\orb-lang-{#AppVersion}.vsix"; DestDir: "{app}\extensions"; Flags: ignoreversion; Components: vscode
+Source: "..\tools\orb-pkg.py"; DestDir: "{app}\bin"; Flags: ignoreversion; Components: pkg
+Source: "..\tools\orb-pkg.cmd"; DestDir: "{app}\bin"; Flags: ignoreversion; Components: pkg
 Source: "..\tools\windows\setup-mingw.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Icons]
