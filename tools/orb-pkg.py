@@ -18,7 +18,7 @@ MANIFEST = ROOT / "orb.toml"
 ORB_DIR = ROOT / ".orb"
 PACKAGES = ORB_DIR / "packages"
 LOCK = ORB_DIR / "lock.json"
-NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
+NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
 
 class PackageError(Exception):
@@ -257,7 +257,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="orb-pkg", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="create orb.toml and src/main.orb")
-    init.add_argument("--name", default=ROOT.name)
+    init.add_argument("--name", default=re.sub(r"[^A-Za-z0-9_]", "_", ROOT.name))
     add = sub.add_parser("add", help="add and install a Git dependency")
     add.add_argument("name")
     add.add_argument("url")
