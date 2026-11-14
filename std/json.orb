@@ -1,0 +1,23 @@
+// json - a shorter, discoverable API for Orb!'s browser JSON support.
+// This module is available for --target wasm through the browser host runtime.
+use web;
+
+pub fn parse(text: str) -> web.Json! { return web.json_parse(text); }
+pub fn release(value: web.Json) { web.json_release(value); }
+pub fn kind(value: web.Json) -> i64! { return web.json_kind(value); }
+pub fn len(value: web.Json) -> i64! { return web.json_len(value); }
+pub fn get(value: web.Json, key: str) -> web.Json! { return web.json_get(value, key); }
+pub fn at(value: web.Json, index: i64) -> web.Json! { return web.json_at(value, index); }
+pub fn key_at(value: web.Json, index: i64) -> str! { return web.json_key_at(value, index); }
+pub fn as_string(value: web.Json) -> str! { return web.json_str(value); }
+pub fn as_number(value: web.Json) -> f64! { return web.json_num(value); }
+pub fn as_bool(value: web.Json) -> bool! { return web.json_bool(value); }
+pub fn stringify(value: web.Json) -> str! { return web.json_stringify(value); }
+pub fn object() -> web.Json! { return web.json_object(); }
+pub fn array() -> web.Json! { return web.json_array(); }
+pub fn null() -> web.Json! { return web.json_null(); }
+pub fn from_number(value: f64) -> web.Json! { return web.json_from_num(value); }
+pub fn from_string(value: str) -> web.Json! { return web.json_from_str(value); }
+pub fn from_bool(value: bool) -> web.Json! { return web.json_from_bool(value); }
+pub fn set(object: web.Json, key: str, value: web.Json) -> ! { return web.json_set(object, key, value); }
+pub fn push(array: web.Json, value: web.Json) -> ! { return web.json_push(array, value); }
