@@ -1,0 +1,36 @@
+name: Repair Orb! v0.2.1.1 VS Code release asset
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release.yml"
+      - ".github/workflows/repair-v0.2.1.1-release.yml"
+      - "dist/orb-lang-0.1.0.vsix"
+
+permissions:
+  contents: write
+
+jobs:
+  repair-release-asset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact released source
+        uses: actions/checkout@v4
+        with:
+          ref: v0.2.1.1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rebuild the VS Code extension from the release tag
+        run: python tools/package-vsix.py build/dist
+      - name: Replace the incorrectly named release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          asset_list="$(gh release view v0.2.1.1 --json assets --jq '.assets[].name')"
+          if printf '%s\n' "$asset_list" | grep -Fxq "orb-lang-0.1.0.vsix"; then
+            gh release delete-asset v0.2.1.1 "orb-lang-0.1.0.vsix" --yes
+          fi
+          gh release upload v0.2.1.1 "build/dist/orb-lang-0.2.1.1.vsix" --clobber
