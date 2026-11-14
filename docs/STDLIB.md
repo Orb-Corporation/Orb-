@@ -50,7 +50,7 @@ These modules are small convenience wrappers over the browser host APIs in `web`
 them because they do not currently ship a native JSON parser or HTTP client.
 
 - `json`: `parse`, `release`, `kind`, `len`, `get`, `at`, `key_at`, `as_string`,
-  `as_number`, `as_bool`, `stringify`, `object`, `array`, `null`, `from_number`,
+  `as_number`, `as_bool`, `stringify`, `object`, `array`, `null_value`, `from_number`,
   `from_string`, `from_bool`, `set`, `push`. Values are `web.Json` handles; release owned
   handles with `json.release`, and release returned strings with `web.free_str`.
 - `http`: `request`, `get`, `post_json`, `status`, `ok`, `failed`, `body_text`,
