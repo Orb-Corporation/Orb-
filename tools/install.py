@@ -219,6 +219,10 @@ def main() -> int:
             print("VS Code CLI was not found. The extension package is available at:")
             print(vsix_files[0])
 
+    package_tools = share_dir / "tools"
+    package_tools.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "tools" / "orb-pkg.py", package_tools / "orb-pkg.py")
+
     if "path" in selected:
         print(add_to_path(bin_dir))
 
