@@ -30,7 +30,7 @@ irm https://raw.githubusercontent.com/Orb-Corporation/Orb-/main/install.ps1 | ie
 
 The installer downloads the matching compiler release and opens a component selector. Choose the
 VS Code extension, examples, offline documentation and contributor source files as needed.
-The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `web`) and
+The compiler is required; its standard modules (`math`, `strings`, `vec`, `io`, `json`, `web`) and
 WebAssembly browser runtime are built in. No npm package or separate standard-library download is needed.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for details.
@@ -61,7 +61,7 @@ orb version
 | `orb run f.orb [args...]` | compile to a temporary executable, run it, propagate its exit code |
 | `orb check f.orb` | parse and type-check only |
 | `orb new name` | create a new project directory |
-| `orb pkg ...` | manage public GitHub source-module dependencies (Python 3 required) |
+| `orb pkg ...` | manage public GitHub source-module dependencies (Python 3.10+ required) |
 | `orb doctor` | check the toolchain, compile and run a test program |
 | `orb version` | print the version |
 
