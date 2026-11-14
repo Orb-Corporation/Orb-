@@ -150,10 +150,10 @@ function Install-MinGWPackage {
     }
 
     Write-Host 'Installing the MSYS2 UCRT64 GCC and GNU Binutils packages...'
-    $arguments = '-defterm -no-start -ucrt64 -c "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-gcc"'
-    $process = Start-Process -FilePath $shell -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-    if ($process.ExitCode -ne 0) {
-        throw "MSYS2 package installation failed with exit code $($process.ExitCode)."
+    & $shell -defterm -no-start -ucrt64 -c 'pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-gcc'
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        throw "MSYS2 package installation failed with exit code $exitCode."
     }
 }
 
