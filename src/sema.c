@@ -599,6 +599,39 @@ static const char *std_file_for(const char *name) {
     return name;
 }
 
+static Module *try_module_dir(const char *dir, const char *name) {
+    const char *formats[] = { "%s/%s.orb", "%s/%s/%s.orb", "%s/%s/src/%s.orb" };
+    for (int i = 0; i < 3; i++) {
+        char *cand = i == 0 ? xsprintf(formats[i], dir, name)
+                            : xsprintf(formats[i], dir, name, name);
+        char *text = read_file_text(cand);
+        if (text) return load_module_text(cand, name, text, true);
+    }
+    return NULL;
+}
+
+static Module *search_module_path(const char *name, const char *paths) {
+    if (!paths || !*paths) return NULL;
+#ifdef _WIN32
+    const char sep = ';';
+#else
+    const char sep = ':';
+#endif
+    const char *start = paths;
+    for (const char *p = paths;; p++) {
+        if (*p == sep || *p == 0) {
+            if (p > start) {
+                char *dir = xstrndup(start, (size_t)(p - start));
+                Module *m = try_module_dir(dir, name);
+                if (m) return m;
+            }
+            if (!*p) break;
+            start = p + 1;
+        }
+    }
+    return NULL;
+}
+
 static Module *find_module(Module *from, const char *name, Pos p) {
     Module *m = map_get(&loaded, name);
     if (m) return m;
@@ -606,6 +639,12 @@ static Module *find_module(Module *from, const char *name, Pos p) {
     char *cand = xsprintf("%s/%s.orb", dir_of(from->path), name);
     char *text = std_only ? NULL : read_file_text(cand);
     if (text) return load_module_text(cand, name, text, true);
+    if (!std_only) {
+        m = search_module_path(name, getenv("ORB_PATH"));
+        if (m) return m;
+        m = try_module_dir(".orb/packages", name);
+        if (m) return m;
+    }
     if (!strcmp(name, "web") && g_target != TGT_WASM) {
         diag_error(p, "the standard module `web` talks to a browser: build with --target wasm (see docs/WEB.md)");
         return NULL;
