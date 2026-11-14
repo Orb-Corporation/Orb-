@@ -39,6 +39,34 @@ absent), `trim`, `is_space`, `parse_i64(s) -> i64!` (error `ParseError`),
 `read_line() -> str!`. Errors: `IoError`, `NotFound`. Results of the read functions are
 heap-allocated; release them with `free`.
 
+## json
+
+`use json;` parses JSON on native and WebAssembly targets without an external runtime dependency.
+
+```orb
+use json;
+
+fn main() {
+    doc := json.parse("{\\"name\\":\\"Orb!\\",\\"count\\":3}") catch |e| {
+        println("invalid JSON");
+        return;
+    };
+    root := json.root(doc);
+    name_id := json.get(doc, root, "name") catch -1;
+    name := json.string(doc, name_id) catch "";
+    println(name);
+    free(name);
+    json.free_doc(doc);
+}
+```
+
+The parser exposes a flat token tree: `type_of`, `count`, `at`, `get`, `raw`,
+`string`, `number`, `boolean` and `is_null`. String results are allocated and must be
+released with `free`; `raw` returns a borrowed source slice. A parsed document owns its
+token buffer and must be released with `json.free_doc`. Object-key lookup is linear in the
+number of tokens. JSON numbers are converted to `f64`, so large integers may lose precision;
+use `raw` when exact decimal text is required.
+
 ## vec
 Generic growable array:
 ```orb
