@@ -48,4 +48,5 @@ jobs:
       - name: Test component-based installation
         run: |
           printf '2,3,6\n\n' | python tools/install.py --prefix build/install-smoke
-          build/install-smoke/bin/orb doctor\n          build/install-smoke/bin/orb-pkg --help
+          build/install-smoke/bin/orb doctor
+          build/install-smoke/bin/orb-pkg --help
