@@ -1,5 +1,7 @@
 // Fetch and JSON: asynchronous HTTP, parsing the response, building DOM from it.
-use web;\nuse json;\nuse http;
+use web;
+use json;
+use http;
 
 people: web.Element;
 
@@ -45,8 +47,8 @@ fn on_response(r: web.Response) {
         return;
     }
     body := http.body_text(r) catch |e| { show_status("Could not read the response."); return; };
-    j := json.parse(body) catch |e| { web.free_str(body); show_status("The response is not valid JSON."); return; };
-    web.free_str(body);
+    j := json.parse(body) catch |e| { http.free_text(body); show_status("The response is not valid JSON."); return; };
+    http.free_text(body);
     web.clear(people) catch |e| {};
     render(j) catch |e| { show_status("Unexpected JSON shape."); json.release(j); return; };
     json.release(j);
