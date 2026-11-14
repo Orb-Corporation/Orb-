@@ -64,6 +64,7 @@ def choose_components() -> set[str]:
         ("docs", "Offline documentation", True),
         ("stdlib", "Standard-library source files (for contributors)", False),
         ("websrc", "Browser host source (for contributors)", False),
+        ("pkg", "orb-pkg Git package manager (Python 3.11+ and Git)", True),
         ("path", "Add Orb! to the current user's PATH", True),
     ]
     print("\nComponents")
@@ -145,7 +146,7 @@ def main() -> int:
         assets = {asset["name"]: asset for asset in release.get("assets", [])}
         if asset_name not in assets or f"{asset_name}.sha256" not in assets:
             raise RuntimeError(f"Release {release['tag_name']} is missing {asset_name} or its checksum.")
-        selected = {"examples", "docs", "path"} if args.yes else choose_components()
+        selected = {"examples", "docs", "pkg", "path"} if args.yes else choose_components()
         prefix = args.prefix.expanduser().resolve()
         bin_dir = prefix / "bin"
         share_dir = prefix / "share" / "orb"
@@ -157,7 +158,7 @@ def main() -> int:
         for key, label in (
             ("vscode", "VS Code extension"), ("examples", "Example projects"),
             ("docs", "Offline documentation"), ("stdlib", "Standard-library source"),
-            ("websrc", "Browser host source"), ("path", "PATH integration"),
+            ("websrc", "Browser host source"), ("pkg", "orb-pkg package manager"), ("path", "PATH integration"),
         ):
             if key in selected:
                 print(f"  + {label}")
@@ -188,7 +189,7 @@ def main() -> int:
             source_share = extracted / "share" / "orb"
             components = {
                 "examples": "examples", "docs": "docs", "stdlib": "stdlib",
-                "websrc": "websrc", "vscode": "extensions",
+                "websrc": "websrc", "vscode": "extensions", "pkg": "tools",
             }
             for key, folder in components.items():
                 if key not in selected:
@@ -201,6 +202,15 @@ def main() -> int:
                     else:
                         destination.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(source, destination)
+
+            if "pkg" in selected:
+                package_tools = source_share / "tools"
+                for filename in ("orb-pkg.py", "orb-pkg", "orb-pkg.cmd"):
+                    source = package_tools / filename
+                    if source.is_file():
+                        shutil.copy2(source, bin_dir / filename)
+                if (bin_dir / "orb-pkg").is_file():
+                    (bin_dir / "orb-pkg").chmod(0o755)
 
             if "vscode" in selected:
                 code = shutil.which("code")
