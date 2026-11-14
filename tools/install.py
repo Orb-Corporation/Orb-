@@ -146,7 +146,7 @@ def main() -> int:
 
     try:
         selected = choose_components() if not args.yes else {
-            "examples", "docs", "path"
+            "examples", "docs", "pkg", "path"
         }
     except ValueError as exc:
         print(exc, file=sys.stderr)
@@ -161,7 +161,7 @@ def main() -> int:
 
     print("\nInstallation plan")
     print(f"  Compiler: {installed_exe}")
-    print("  Built-in: core, math, strings, vec, I/O, WASM, Web browser APIs")
+    print("  Built-in: core, math, strings, vec, I/O, JSON, WASM, Web browser APIs")
     for component, label in [
         ("vscode", "VS Code extension"),
         ("examples", "Example projects"),
