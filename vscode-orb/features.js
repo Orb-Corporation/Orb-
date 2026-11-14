@@ -9,7 +9,7 @@ const KEYWORDS = [
 ];
 const BUILTINS = {
   print: 'print(...): write values to standard output.',
-  println: 'println(...): write values followed by a newline.',
+  println: 'println(...): write values followed by a newline to standard output.',
   eprint: 'eprint(...): write values to standard error.',
   eprintln: 'eprintln(...): write values followed by a newline to standard error.',
   flush: 'flush(): flush buffered standard output.',
