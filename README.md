@@ -42,7 +42,7 @@ GNU binutils on Linux, Xcode command line tools on macOS, MinGW-w64 on Windows.
 
 ```sh
 make            # builds build/orb
-make test       # regression suite; VS Code tests run when Node.js is installed
+make test       # regression suite; VS Code tests need Node.js, package tests need Python 3.10+
 python3 tests/fuzz.py 500  # separate differential fuzzer (not part of make test)
 sudo make install        # optional: installs `orb` to /usr/local/bin
 
