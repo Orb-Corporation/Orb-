@@ -4,7 +4,7 @@ Orb! 0.3.0 adds a small source-only package manager to the compiler CLI. It inst
 GitHub repositories containing Orb! modules. It does not install native binaries, run package
 scripts, or execute code while installing.
 
-Python 3 is required for the "orb pkg" commands. The native compiler itself remains a standalone
+Python 3.10 or newer is required for the "orb pkg" commands. The native compiler itself remains a standalone
 C program.
 
 ## Start a project
@@ -23,7 +23,7 @@ This creates:
 ## Add a module
 
 ~~~sh
-orb pkg add http OrbTechnologies/orb-http v1.0.0
+orb pkg add http yourname/orb-http v1.0.0
 ~~~
 
 The repository must contain **http.orb** either at its root or in **src/**. Orb! source files
