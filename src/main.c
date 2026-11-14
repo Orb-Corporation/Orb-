@@ -256,7 +256,7 @@ static int cmd_doctor(void) {
     } else {
         const char *pre = g_host == TGT_WINDOWS ? "" : "x86_64-w64-mingw32-";
         bool a = tool_ok(envor("ORB_AS", xsprintf("%sas", pre)), "--version"), c = tool_ok(envor("ORB_CC", xsprintf("%sgcc", pre)), "--version");
-        report("assembler (MinGW-w64 'as')", a, "install MSYS2 and `pacman -S mingw-w64-x86_64-gcc`, then use the 'MSYS2 MinGW x64' shell");
+        report("assembler (MinGW-w64 'as')", a, "install MinGW-w64 from Orb! Setup, or install MSYS2 UCRT64 and add its `ucrt64/bin` directory to PATH");
         report("linker driver (MinGW-w64 'gcc')", c, "same as above");
         all = a && c;
     }
