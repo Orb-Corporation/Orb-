@@ -1,0 +1,45 @@
+use json;
+
+fn main() {
+    source := "{\"name\":\"Orb!\",\"version\":0.3,\"active\":true,\"nested\":{\"value\":-12.5e2},\"items\":[1,2,null],\"symbol\":\"\\u263A\"}";
+    doc := json.parse(source) catch |e| {
+        println("parse failed");
+        return;
+    };
+    top := json.root(doc);
+    println("fields=", json.count(doc, top) catch 0);
+
+    name_id := json.get(doc, top, "name") catch -1;
+    name := json.string(doc, name_id) catch "";
+    println("name=", name);
+    free(name);
+
+    version_id := json.get(doc, top, "version") catch -1;
+    println("version=", json.number(doc, version_id) catch 0.0);
+
+    active_id := json.get(doc, top, "active") catch -1;
+    println("active=", json.boolean(doc, active_id) catch false);
+
+    nested := json.get(doc, top, "nested") catch -1;
+    value_id := json.get(doc, nested, "value") catch -1;
+    println("nested=", json.number(doc, value_id) catch 0.0);
+
+    items := json.get(doc, top, "items") catch -1;
+    println("items=", json.count(doc, items) catch -1);
+    third := json.at(doc, items, 2) catch -1;
+    println("third is null=", json.is_null(doc, third) catch false);
+
+    symbol_id := json.get(doc, top, "symbol") catch -1;
+    symbol := json.string(doc, symbol_id) catch "";
+    println("unicode=", symbol);
+    free(symbol);
+
+    bad := json.parse("{]") catch |e| {
+        println("invalid json rejected");
+        json.free_doc(doc);
+        return;
+    };
+    json.free_doc(bad);
+    println("invalid json accepted");
+    json.free_doc(doc);
+}

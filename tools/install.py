@@ -36,6 +36,7 @@ def choose_components() -> set[str]:
         ("docs", "Offline documentation", True),
         ("stdlib", "Standard-library source files (for contributors)", False),
         ("websrc", "Browser host source (for Web runtime contributors)", False),
+        ("pkg", "orb-pkg Git package manager (Python 3.11+ and Git)", True),
         ("path", "Add Orb! to the current user's PATH", True),
     ]
     print("\nComponents")
@@ -44,7 +45,7 @@ def choose_components() -> set[str]:
     for i, (key, label, selected) in enumerate(items, 1):
         state = "x" if selected else " "
         print(f"  {i}. [{state}] {label}")
-    print("\nPress Enter for the defaults, or enter numbers separated by commas (for example: 1,2,3,6).")
+    print("\nPress Enter for the defaults, or enter numbers separated by commas (for example: 1,2,3,6,7).")
     raw = input("Selections: ").strip().lower()
     if not raw:
         return {key for key, _, default in items if default}
@@ -145,7 +146,7 @@ def main() -> int:
 
     try:
         selected = choose_components() if not args.yes else {
-            "examples", "docs", "path"
+            "examples", "docs", "pkg", "path"
         }
     except ValueError as exc:
         print(exc, file=sys.stderr)
@@ -160,13 +161,14 @@ def main() -> int:
 
     print("\nInstallation plan")
     print(f"  Compiler: {installed_exe}")
-    print("  Built-in: core, math, strings, vec, I/O, WASM, Web browser APIs")
+    print("  Built-in: core, math, strings, vec, I/O, JSON, WASM, Web browser APIs")
     for component, label in [
         ("vscode", "VS Code extension"),
         ("examples", "Example projects"),
         ("docs", "Offline documentation"),
         ("stdlib", "Standard-library source files"),
         ("websrc", "Browser host source"),
+        ("pkg", "orb-pkg package manager"),
         ("path", "PATH integration"),
     ]:
         if component in selected:
@@ -202,6 +204,11 @@ def main() -> int:
     if "websrc" in selected:
         (share_dir / "web").mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / "web" / "orb.js", share_dir / "web" / "orb.js")
+    if "pkg" in selected:
+        for filename in ("orb-pkg.py", "orb-pkg", "orb-pkg.cmd"):
+            shutil.copy2(ROOT / "tools" / filename, bin_dir / filename)
+        if os.name != "nt":
+            (bin_dir / "orb-pkg").chmod(0o755)
 
     if "vscode" in selected:
         extension_dir = share_dir / "extensions"
@@ -232,6 +239,9 @@ def main() -> int:
     print("\nInstallation complete.")
     print("Open a new terminal, then try:")
     print("  orb doctor")
+    if "pkg" in selected:
+        print("  orb-pkg init --name hello")
+        print("  orb-pkg add package_name https://github.com/owner/package.git")
     print("  orb new hello")
     print("  orb run hello/main.orb")
     print("For Orb! Web: orb build main.orb --target wasm -o app.wasm")

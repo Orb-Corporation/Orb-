@@ -1,0 +1,443 @@
+// json - a small, dependency-free JSON parser for native and WebAssembly programs.
+//
+// The document stores a flat token tree. String values are decoded on demand;
+// raw() returns the original source span without allocating.
+use vec;
+
+pub error InvalidJson, WrongType, NotFound, IndexOutOfRange;
+
+pub enum Kind { Null, Bool, Number, String, Array, Object }
+
+pub struct Token {
+    kind: Kind,
+    start: i64,
+    end: i64,
+    parent: i64,
+    key_start: i64,
+    key_end: i64,
+}
+
+pub struct Document {
+    source: str,
+    tokens: []Token,
+    root: i64,
+}
+
+struct Span { start: i64, end: i64 }
+struct Parser { source: str, pos: i64, tokens: vec.Vec<Token> }
+
+fn whitespace(c: u8) -> bool {
+    return c == ' ' || c == '\n' || c == '\r' || c == '\t';
+}
+
+fn skip_space(p: *Parser) {
+    while p.pos < p.source.len && whitespace(p.source[p.pos]) { p.pos += 1; }
+}
+
+fn hex_value(c: u8) -> i64 {
+    if c >= '0' && c <= '9' { return (c - '0') as i64; }
+    if c >= 'a' && c <= 'f' { return (c - 'a') as i64 + 10; }
+    if c >= 'A' && c <= 'F' { return (c - 'A') as i64 + 10; }
+    return -1;
+}
+
+fn read_hex4(p: *Parser) -> i64! {
+    if p.pos + 4 > p.source.len { fail InvalidJson; }
+    value := 0;
+    for _ in 0..4 {
+        d := hex_value(p.source[p.pos]);
+        if d < 0 { fail InvalidJson; }
+        value = value * 16 + d;
+        p.pos += 1;
+    }
+    return value;
+}
+
+// Consumes a JSON string and returns the byte range inside its quotes.
+fn scan_string(p: *Parser) -> Span! {
+    if p.pos >= p.source.len || p.source[p.pos] != '"' { fail InvalidJson; }
+    p.pos += 1;
+    start := p.pos;
+    while p.pos < p.source.len {
+        c := p.source[p.pos];
+        if c == '"' {
+            finish := p.pos;
+            p.pos += 1;
+            return Span{ start: start, end: finish };
+        }
+        if c < 32 { fail InvalidJson; }
+        if c == '\\' {
+            p.pos += 1;
+            if p.pos >= p.source.len { fail InvalidJson; }
+            e := p.source[p.pos];
+            if e == '"' || e == '\\' || e == '/' || e == 'b' || e == 'f' ||
+               e == 'n' || e == 'r' || e == 't' {
+                p.pos += 1;
+            } else if e == 'u' {
+                p.pos += 1;
+                _ := try read_hex4(p);
+            } else {
+                fail InvalidJson;
+            }
+        } else {
+            p.pos += 1;
+        }
+    }
+    fail InvalidJson;
+}
+
+fn add_token(p: *Parser, kind: Kind, start: i64, parent: i64, key_start: i64, key_end: i64) -> i64 {
+    t: Token;
+    t.kind = kind;
+    t.start = start;
+    t.end = start;
+    t.parent = parent;
+    t.key_start = key_start;
+    t.key_end = key_end;
+    p.tokens.push(t);
+    return p.tokens.len - 1;
+}
+
+fn consume_literal(p: *Parser, literal: str) -> bool {
+    if p.pos + literal.len > p.source.len { return false; }
+    if p.source[p.pos..p.pos + literal.len] != literal { return false; }
+    p.pos += literal.len;
+    return true;
+}
+
+fn scan_number(p: *Parser) -> bool {
+    start := p.pos;
+    if p.pos < p.source.len && p.source[p.pos] == '-' { p.pos += 1; }
+    if p.pos >= p.source.len { p.pos = start; return false; }
+    if p.source[p.pos] == '0' {
+        p.pos += 1;
+    } else if p.source[p.pos] >= '1' && p.source[p.pos] <= '9' {
+        while p.pos < p.source.len && p.source[p.pos] >= '0' && p.source[p.pos] <= '9' { p.pos += 1; }
+    } else {
+        p.pos = start;
+        return false;
+    }
+    if p.pos < p.source.len && p.source[p.pos] == '.' {
+        p.pos += 1;
+        frac := p.pos;
+        while p.pos < p.source.len && p.source[p.pos] >= '0' && p.source[p.pos] <= '9' { p.pos += 1; }
+        if p.pos == frac { p.pos = start; return false; }
+    }
+    if p.pos < p.source.len && (p.source[p.pos] == 'e' || p.source[p.pos] == 'E') {
+        p.pos += 1;
+        if p.pos < p.source.len && (p.source[p.pos] == '+' || p.source[p.pos] == '-') { p.pos += 1; }
+        exp_start := p.pos;
+        while p.pos < p.source.len && p.source[p.pos] >= '0' && p.source[p.pos] <= '9' { p.pos += 1; }
+        if p.pos == exp_start { p.pos = start; return false; }
+    }
+    return true;
+}
+
+fn parse_value(p: *Parser, parent: i64, key_start: i64, key_end: i64) -> i64! {
+    skip_space(p);
+    if p.pos >= p.source.len { fail InvalidJson; }
+    start := p.pos;
+    c := p.source[p.pos];
+
+    if c == '{' {
+        idx := add_token(p, Kind.Object, start, parent, key_start, key_end);
+        p.pos += 1;
+        skip_space(p);
+        if p.pos < p.source.len && p.source[p.pos] == '}' {
+            p.pos += 1;
+            p.tokens.data[idx].end = p.pos;
+            return idx;
+        }
+        loop {
+            skip_space(p);
+            key := try scan_string(p);
+            skip_space(p);
+            if p.pos >= p.source.len || p.source[p.pos] != ':' { fail InvalidJson; }
+            p.pos += 1;
+            _ := try parse_value(p, idx, key.start, key.end);
+            skip_space(p);
+            if p.pos >= p.source.len { fail InvalidJson; }
+            if p.source[p.pos] == '}' {
+                p.pos += 1;
+                break;
+            }
+            if p.source[p.pos] != ',' { fail InvalidJson; }
+            p.pos += 1;
+        }
+        p.tokens.data[idx].end = p.pos;
+        return idx;
+    }
+
+    if c == '[' {
+        idx := add_token(p, Kind.Array, start, parent, key_start, key_end);
+        p.pos += 1;
+        skip_space(p);
+        if p.pos < p.source.len && p.source[p.pos] == ']' {
+            p.pos += 1;
+            p.tokens.data[idx].end = p.pos;
+            return idx;
+        }
+        loop {
+            _ := try parse_value(p, idx, -1, -1);
+            skip_space(p);
+            if p.pos >= p.source.len { fail InvalidJson; }
+            if p.source[p.pos] == ']' {
+                p.pos += 1;
+                break;
+            }
+            if p.source[p.pos] != ',' { fail InvalidJson; }
+            p.pos += 1;
+        }
+        p.tokens.data[idx].end = p.pos;
+        return idx;
+    }
+
+    if c == '"' {
+        _ := try scan_string(p);
+        idx := add_token(p, Kind.String, start, parent, key_start, key_end);
+        p.tokens.data[idx].end = p.pos;
+        return idx;
+    }
+    if consume_literal(p, "null") {
+        idx := add_token(p, Kind.Null, start, parent, key_start, key_end);
+        p.tokens.data[idx].end = p.pos;
+        return idx;
+    }
+    if consume_literal(p, "true") || consume_literal(p, "false") {
+        idx := add_token(p, Kind.Bool, start, parent, key_start, key_end);
+        p.tokens.data[idx].end = p.pos;
+        return idx;
+    }
+    if scan_number(p) {
+        idx := add_token(p, Kind.Number, start, parent, key_start, key_end);
+        p.tokens.data[idx].end = p.pos;
+        return idx;
+    }
+    fail InvalidJson;
+}
+
+// Parses one complete JSON value. The returned document owns its token array;
+// call free_doc() when it is no longer needed.
+pub fn parse(source: str) -> Document! {
+    p: Parser;
+    p.source = source;
+    p.pos = 0;
+    skip_space(&p);
+    root := parse_value(&p, -1, -1, -1) catch |e| {
+        p.tokens.free_vec();
+        fail e;
+    };
+    skip_space(&p);
+    if p.pos != source.len {
+        p.tokens.free_vec();
+        fail InvalidJson;
+    }
+    return Document{ source: source, tokens: p.tokens.items(), root: root };
+}
+
+pub fn free_doc(doc: Document) {
+    free(doc.tokens);
+}
+
+pub fn root(doc: Document) -> i64 {
+    return doc.root;
+}
+
+pub fn type_of(doc: Document, index: i64) -> Kind! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    return doc.tokens[index].kind;
+}
+
+pub fn raw(doc: Document, index: i64) -> str! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    t := doc.tokens[index];
+    return doc.source[t.start..t.end];
+}
+
+fn put_utf8(out: *u8, at: i64, cp: i64) -> i64 {
+    if cp <= 127 {
+        out[at] = cp as u8;
+        return at + 1;
+    }
+    if cp <= 2047 {
+        out[at] = (192 | (cp >> 6)) as u8;
+        out[at + 1] = (128 | (cp & 63)) as u8;
+        return at + 2;
+    }
+    if cp <= 65535 {
+        out[at] = (224 | (cp >> 12)) as u8;
+        out[at + 1] = (128 | ((cp >> 6) & 63)) as u8;
+        out[at + 2] = (128 | (cp & 63)) as u8;
+        return at + 3;
+    }
+    out[at] = (240 | (cp >> 18)) as u8;
+    out[at + 1] = (128 | ((cp >> 12) & 63)) as u8;
+    out[at + 2] = (128 | ((cp >> 6) & 63)) as u8;
+    out[at + 3] = (128 | (cp & 63)) as u8;
+    return at + 4;
+}
+
+fn decode(s: str) -> str! {
+    out := make(u8, s.len);
+    i := 0;
+    n := 0;
+    while i < s.len {
+        c := s[i];
+        if c != '\\' {
+            out[n] = c;
+            n += 1;
+            i += 1;
+            continue;
+        }
+        i += 1;
+        if i >= s.len { free(out); fail InvalidJson; }
+        e := s[i];
+        i += 1;
+        if e == '"' || e == '\\' || e == '/' { out[n] = e; n += 1; }
+        else if e == 'b' { out[n] = 8; n += 1; }
+        else if e == 'f' { out[n] = 12; n += 1; }
+        else if e == 'n' { out[n] = 10; n += 1; }
+        else if e == 'r' { out[n] = 13; n += 1; }
+        else if e == 't' { out[n] = 9; n += 1; }
+        else if e == 'u' {
+            if i + 4 > s.len { free(out); fail InvalidJson; }
+            cp := 0;
+            for _ in 0..4 {
+                d := hex_value(s[i]);
+                if d < 0 { free(out); fail InvalidJson; }
+                cp = cp * 16 + d;
+                i += 1;
+            }
+            if cp >= 55296 && cp <= 56319 {
+                if i + 6 > s.len || s[i] != '\\' || s[i + 1] != 'u' { free(out); fail InvalidJson; }
+                i += 2;
+                low := 0;
+                for _ in 0..4 {
+                    d := hex_value(s[i]);
+                    if d < 0 { free(out); fail InvalidJson; }
+                    low = low * 16 + d;
+                    i += 1;
+                }
+                if low < 56320 || low > 57343 { free(out); fail InvalidJson; }
+                cp = 65536 + (cp - 55296) * 1024 + (low - 56320);
+            } else if cp >= 56320 && cp <= 57343 {
+                free(out);
+                fail InvalidJson;
+            }
+            n = put_utf8(out.ptr, n, cp);
+        } else {
+            free(out);
+            fail InvalidJson;
+        }
+    }
+    return str_from(out.ptr, n);
+}
+
+// Returns a decoded string. The caller must release it with free().
+pub fn string(doc: Document, index: i64) -> str! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    t := doc.tokens[index];
+    if t.kind != Kind.String { fail WrongType; }
+    return decode(doc.source[t.start + 1..t.end - 1]);
+}
+
+// Returns the number of immediate children in an array or object.
+pub fn count(doc: Document, index: i64) -> i64! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    k := doc.tokens[index].kind;
+    if k != Kind.Array && k != Kind.Object { fail WrongType; }
+    n := 0;
+    for i in 0..doc.tokens.len {
+        if doc.tokens[i].parent == index { n += 1; }
+    }
+    return n;
+}
+
+pub fn at(doc: Document, index: i64, item: i64) -> i64! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    if doc.tokens[index].kind != Kind.Array { fail WrongType; }
+    if item < 0 { fail IndexOutOfRange; }
+    n := 0;
+    for i in 0..doc.tokens.len {
+        if doc.tokens[i].parent == index {
+            if n == item { return i; }
+            n += 1;
+        }
+    }
+    fail IndexOutOfRange;
+}
+
+pub fn get(doc: Document, index: i64, key: str) -> i64! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    if doc.tokens[index].kind != Kind.Object { fail WrongType; }
+    for i in 0..doc.tokens.len {
+        t := doc.tokens[i];
+        if t.parent == index {
+            name := decode(doc.source[t.key_start..t.key_end]) catch |e| { fail e; };
+            matches := name == key;
+            free(name);
+            if matches { return i; }
+        }
+    }
+    fail NotFound;
+}
+
+fn pow10(n: i64) -> f64 {
+    value := 1.0;
+    if n >= 0 {
+        for _ in 0..n { value *= 10.0; }
+    } else {
+        for _ in 0..(0 - n) { value /= 10.0; }
+    }
+    return value;
+}
+
+// Converts a JSON number token to f64.
+pub fn number(doc: Document, index: i64) -> f64! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    t := doc.tokens[index];
+    if t.kind != Kind.Number { fail WrongType; }
+    s := doc.source[t.start..t.end];
+    i := 0;
+    sign := 1.0;
+    if s[0] == '-' { sign = 0.0 - sign; i += 1; }
+    value := 0.0;
+    while i < s.len && s[i] >= '0' && s[i] <= '9' {
+        value = value * 10.0 + ((s[i] - '0') as f64);
+        i += 1;
+    }
+    if i < s.len && s[i] == '.' {
+        i += 1;
+        factor := 0.1;
+        while i < s.len && s[i] >= '0' && s[i] <= '9' {
+            value += ((s[i] - '0') as f64) * factor;
+            factor *= 0.1;
+            i += 1;
+        }
+    }
+    exponent := 0;
+    if i < s.len && (s[i] == 'e' || s[i] == 'E') {
+        i += 1;
+        exp_sign := 1;
+        if i < s.len && s[i] == '-' { exp_sign = -1; i += 1; }
+        else if i < s.len && s[i] == '+' { i += 1; }
+        while i < s.len && s[i] >= '0' && s[i] <= '9' {
+            if exponent < 1000 { exponent = exponent * 10 + ((s[i] - '0') as i64); }
+            i += 1;
+        }
+        exponent *= exp_sign;
+    }
+    return sign * value * pow10(exponent);
+}
+
+pub fn boolean(doc: Document, index: i64) -> bool! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    t := doc.tokens[index];
+    if t.kind != Kind.Bool { fail WrongType; }
+    return doc.source[t.start..t.end] == "true";
+}
+
+pub fn is_null(doc: Document, index: i64) bool! {
+    if index < 0 || index >= doc.tokens.len { fail IndexOutOfRange; }
+    return doc.tokens[index].kind == Kind.Null;
+}

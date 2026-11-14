@@ -7,6 +7,7 @@ const cp = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const L = require('./lib');
+const languageTools = require('./language-tools');
 
 let diagnostics, output, terminal, warnedMissing = false;
 const perDocUris = new Map();
@@ -185,6 +186,38 @@ function activate(context) {
         vscode.workspace.onDidCloseTextDocument(d => { for (const u of perDocUris.get(d.uri.toString()) || []) diagnostics.delete(vscode.Uri.parse(u)); perDocUris.delete(d.uri.toString()); }),
         vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('orb')) { warnedMissing = false; vscode.workspace.textDocuments.forEach(maybeCheck); } }),
         vscode.languages.registerCodeLensProvider({ language: 'orb' }, new MainLens()),
+        ...(vscode.languages.registerCompletionItemProvider ? [
+            vscode.languages.registerCompletionItemProvider({ language: 'orb' }, {
+                provideCompletionItems(doc, position) {
+                    const entries = languageTools.completions(doc.getText(), doc.offsetAt(position));
+                    const kinds = vscode.CompletionItemKind || {};
+                    const mapped = {
+                        Keyword: kinds.Keyword, Class: kinds.Class, Function: kinds.Function,
+                        Constant: kinds.Constant, Variable: kinds.Variable, Module: kinds.Module
+                    };
+                    return entries.map(entry => {
+                        const item = new vscode.CompletionItem(entry.label, mapped[entry.kind] || kinds.Text);
+                        item.detail = entry.detail;
+                        item.documentation = entry.documentation;
+                        item.insertText = entry.insertText;
+                        item.sortText = entry.label;
+                        return item;
+                    });
+                }
+            }, '.')
+        ] : []),
+        ...(vscode.languages.registerHoverProvider ? [
+            vscode.languages.registerHoverProvider({ language: 'orb' }, {
+                provideHover(doc, position) {
+                    const range = doc.getWordRangeAtPosition(position, /[A-Za-z_][A-Za-z0-9_]*/);
+                    if (!range) return null;
+                    const word = doc.getText(range);
+                    const markdown = languageTools.hover(doc.getText(), doc.offsetAt(position), word);
+                    if (!markdown) return null;
+                    return new vscode.Hover(new vscode.MarkdownString(markdown), range);
+                }
+            })
+        ] : []),
         vscode.window.onDidCloseTerminal(t => { if (t === terminal) terminal = undefined; })
     );
     vscode.workspace.textDocuments.forEach(maybeCheck);

@@ -41,4 +41,4 @@ The extension's logic (path translation, WSL command construction, shell quoting
 unit tests, and `extension.js` is exercised end to end against a mock of the VS Code API using the real compiler
 (diagnostics, run/build commands, CodeLens, tasks). It has **not** been loaded into a real VS Code window in the
 environment where it was written; if something misbehaves, open *Orb: Show Output* and report what it says.
-Run the tests with `node --test vscode-orb/test/lib.test.js vscode-orb/test/extension.mock.test.js`.
+Run the tests with `node --test vscode-orb/test/lib.test.js vscode-orb/test/language-tools.test.js vscode-orb/test/extension.mock.test.js`.

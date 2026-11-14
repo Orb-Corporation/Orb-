@@ -70,3 +70,12 @@ compilation does not require a native assembler or linker.
 
 If you want to build Orb! from a checkout, see the repository README and run
 `python3 tools/install.py` for the source-based installer wizard.
+
+
+## Package manager
+
+The installer can also add the optional `orb-pkg` companion command. It requires Python
+3.11+ and Git; the compiler itself does not depend on either. Use `orb-pkg init` to
+create a project manifest, `orb-pkg add` to add Git dependencies, and `orb-pkg install`
+or `orb-pkg update` to manage them. See [PACKAGES.md](PACKAGES.md) for the manifest,
+lock-file and package-source layout.
