@@ -735,6 +735,46 @@ static Opnd lw_scalar(Node *n) {
     return I(0);
 }
 
+static bool integer_constant_bits(Node *n, uint64_t *value) {
+    if (n->kind == N_INT) { *value = n->ival; return true; }
+    if (n->kind == N_UNARY && n->op == TK_MINUS && n->a->kind == N_INT) {
+        *value = (uint64_t)0 - n->a->ival;
+        return true;
+    }
+    return false;
+}
+
+// A modulo result is zero exactly when all low bits covered by a power-of-two
+// divisor are clear. This avoids materializing a signed remainder just to
+// compare it with zero, while leaving the value-producing modulo path untouched.
+static bool lower_mod_zero_test(Node *n, int lbl, bool jump_if) {
+    if (n->op != TK_EQ && n->op != TK_NE) return false;
+
+    Node *mod = NULL, *zero = NULL;
+    if (n->a->kind == N_BINARY && n->a->op == TK_PERCENT &&
+        n->b->kind == N_INT && n->b->ival == 0) {
+        mod = n->a; zero = n->b;
+    } else if (n->b->kind == N_BINARY && n->b->op == TK_PERCENT &&
+               n->a->kind == N_INT && n->a->ival == 0) {
+        mod = n->b; zero = n->a;
+    }
+    (void)zero;
+    if (!mod || !ty_is_intlike(mod->type)) return false;
+
+    uint64_t divisor;
+    if (!integer_constant_bits(mod->b, &divisor)) return false;
+    if (ty_is_signed(mod->b->type) && (int64_t)divisor < 0)
+        divisor = (uint64_t)0 - divisor;
+    // Keep divisor 1 out: signed remainder by -1 has an exceptional MIN case.
+    if (divisor <= 1 || (divisor & (divisor - 1)) != 0) return false;
+
+    Opnd low_bits = bin(OP_AND, lw_scalar(mod->a), I((int64_t)(divisor - 1)), 0);
+    int cc = n->op == TK_EQ ? CC_EQ : CC_NE;
+    if (!jump_if) cc = cc_invert(cc);
+    jcc(cc, low_bits, I(0), lbl);
+    return true;
+}
+
 static void lw_branch(Node *n, int lbl, bool jump_if) {
     switch (n->kind) {
     case N_BOOL:
@@ -756,6 +796,7 @@ static void lw_branch(Node *n, int lbl, bool jump_if) {
             return;
         }
         bool cmp = op == TK_EQ || op == TK_NE || op == TK_LT || op == TK_LE || op == TK_GT || op == TK_GE;
+        if (cmp && lower_mod_zero_test(n, lbl, jump_if)) return;
         Type *lt = n->a->type;
         if (cmp && lt->kind != TY_F64 && lt->kind != TY_STR) {
             Opnd a = lw_scalar(n->a), b = lw_scalar(n->b);
