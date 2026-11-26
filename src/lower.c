@@ -750,15 +750,14 @@ static bool integer_constant_bits(Node *n, uint64_t *value) {
 static bool lower_mod_zero_test(Node *n, int lbl, bool jump_if) {
     if (n->op != TK_EQ && n->op != TK_NE) return false;
 
-    Node *mod = NULL, *zero = NULL;
+    Node *mod = NULL;
     if (n->a->kind == N_BINARY && n->a->op == TK_PERCENT &&
         n->b->kind == N_INT && n->b->ival == 0) {
-        mod = n->a; zero = n->b;
+        mod = n->a;
     } else if (n->b->kind == N_BINARY && n->b->op == TK_PERCENT &&
                n->a->kind == N_INT && n->a->ival == 0) {
-        mod = n->b; zero = n->a;
+        mod = n->b;
     }
-    (void)zero;
     if (!mod || !ty_is_intlike(mod->type)) return false;
 
     uint64_t divisor;
