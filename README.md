@@ -155,10 +155,18 @@ Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 * Standard library: `core` (I/O, memory, panics), `math`, `strings`, `io`, `vec`, `json` (validation and string escaping), plus target-specific OS layers.
 * Tests: `make test` runs the regression fixtures and CLI checks; VS Code extension tests run when Node.js is installed. The differential fuzzer is separate: `python3 tests/fuzz.py 500`.
 
-## Performance (measured, reproducible)
+## Performance measurements
 
-`make bench` builds each program in `bench/` with Orb! and with `gcc -O0` / `gcc -O2` and
-prints the best of three runs. Results on the development machine (1 core, x86-64):
+Run `make bench` to compare Orb! with GCC at `-O0` and `-O2`, plus Orb!'s
+`--unchecked` mode. The runner warms each executable, interleaves the variants, takes
+the median of seven timed runs by default, and checks every variant's complete output
+against the same reference. CI runs three timed samples and keeps the measurements in
+the workflow log. Timings cover process startup and execution on the current machine;
+they are measurements, not a performance pass/fail threshold.
+
+The table below is a historical snapshot from the development machine, measured with the
+older best-of-three runner. It is useful as a rough reference, but the current runner should
+be used for new comparisons:
 
 | benchmark | orb | orb `--unchecked` | gcc -O0 | gcc -O2 |
 |---|---:|---:|---:|---:|
@@ -167,11 +175,6 @@ prints the best of three runs. Results on the development machine (1 core, x86-6
 | matmul 300×300 f64 | 0.030 s | 0.035 s | 0.057 s | 0.009 s |
 | collatz < 3 M | 1.015 s | 1.000 s | 1.181 s | 0.587 s |
 | mandelbrot 600×400 | 0.033 s | 0.033 s | 0.060 s | 0.027 s |
-
-All outputs are checked against the C versions. **Orb! does not beat `gcc -O2`**: it is roughly
-at the level of (or a little faster than) `gcc -O0`, and within 1× – 5× of `gcc -O2` on these
-programs. The optimiser is deliberately small (see limitations); the numbers are reported as
-they are.
 
 ## Known limitations (honest list)
 
