@@ -1,3 +1,5 @@
+const FOUR = 4;
+
 fn main() {
     signed_even := 0;
     multiple_of_negative_four := 0;
@@ -13,7 +15,7 @@ fn main() {
     unsigned_not_multiple_of_eight := 0;
     for i in 0..11 {
         x := i as u64;
-        if x % 4 == 0 { unsigned_multiple_of_four += 1; }
+        if x % FOUR == 0 { unsigned_multiple_of_four += 1; }
         if 0 != x % 8 { unsigned_not_multiple_of_eight += 1; }
     }
 
