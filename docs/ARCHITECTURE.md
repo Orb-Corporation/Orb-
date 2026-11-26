@@ -85,8 +85,9 @@ explicitly skipped).
 The differential fuzzer remains separate from `make test` and can be run locally with
 `python3 tests/fuzz.py 500`. GitHub Actions runs 200 generated programs on pushes and pull
 requests, then 2,000 programs nightly. Every program is checked with and without optimisation.
-Compilation and execution have time limits. A failing seed saves its `.orb` reproducer and a log
-under `build/fuzz-failures/`; CI uploads these files as an artifact so a compiler bug can be replayed.
+Compilation and execution have time limits. Each run prints its seed range for exact replay. A
+failing seed saves its `.orb` reproducer and a log under `build/fuzz-failures/`; CI uploads these
+files as an artifact so a compiler bug can be replayed.
 
 * `tests/ok`: programs with expected output, each run default, `--no-opt` and `--unchecked`.
 * `tests/err`: each program must fail to compile with a specific message.
