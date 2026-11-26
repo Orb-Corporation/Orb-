@@ -194,16 +194,16 @@ def check_variant(orb, node, runner, source_path, executable_path, source, expec
         result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=30)
     except subprocess.TimeoutExpired as e:
         details = (
-            "%s compilation timed out after 30 seconds\\nseed: %d\\nflags: %s\\ncommand: %s\\n"
-            "stdout:\\n%s\\nstderr:\\n%s"
+            "%s compilation timed out after 30 seconds\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s"
         ) % (backend, seed, mode, " ".join(compile_cmd), captured_text(e.stdout), captured_text(e.stderr))
         print("seed", seed, backend, flags, "COMPILE TIMEOUT")
         save_failure(seed, flags, source, details, backend)
         return False
     if result.returncode != 0:
         details = (
-            "%s compilation failed with exit code %d\\nseed: %d\\nflags: %s\\ncommand: %s\\n"
-            "stdout:\\n%s\\nstderr:\\n%s"
+            "%s compilation failed with exit code %d\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s"
         ) % (backend, result.returncode, seed, mode, " ".join(compile_cmd), result.stdout, result.stderr)
         print("seed", seed, backend, flags, "COMPILE ERROR:", result.stderr[:300])
         save_failure(seed, flags, source, details, backend)
@@ -213,24 +213,24 @@ def check_variant(orb, node, runner, source_path, executable_path, source, expec
         result = subprocess.run(run_cmd, capture_output=True, text=True, timeout=10)
     except subprocess.TimeoutExpired as e:
         details = (
-            "%s program timed out after 10 seconds\\nseed: %d\\nflags: %s\\ncommand: %s\\n"
-            "stdout:\\n%s\\nstderr:\\n%s\\nexpected:\\n%s"
+            "%s program timed out after 10 seconds\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s\nexpected:\n%s"
         ) % (backend, seed, mode, " ".join(run_cmd), captured_text(e.stdout), captured_text(e.stderr), expected)
         print("seed", seed, backend, flags, "RUNTIME TIMEOUT")
         save_failure(seed, flags, source, details, backend)
         return False
     if result.returncode != 0:
         details = (
-            "%s program exited with code %d\\nseed: %d\\nflags: %s\\ncommand: %s\\n"
-            "stdout:\\n%s\\nstderr:\\n%s\\nexpected:\\n%s"
+            "%s program exited with code %d\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s\nexpected:\n%s"
         ) % (backend, result.returncode, seed, mode, " ".join(run_cmd), result.stdout, result.stderr, expected)
         print("seed", seed, backend, flags, "RUNTIME ERROR:", result.stderr[:300])
         save_failure(seed, flags, source, details, backend)
         return False
     if result.stdout != expected:
         details = (
-            "%s output mismatch\\nseed: %d\\nflags: %s\\ncommand: %s\\n"
-            "stdout:\\n%s\\nexpected:\\n%s\\nstderr:\\n%s"
+            "%s output mismatch\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nexpected:\n%s\nstderr:\n%s"
         ) % (backend, seed, mode, " ".join(run_cmd), result.stdout, expected, result.stderr)
         print("seed", seed, backend, flags, "MISMATCH")
         save_failure(seed, flags, source, details, backend)
