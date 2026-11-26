@@ -163,6 +163,12 @@ def gen_program(seed):
     expected = "\n".join(str(env[v]) for v in vars_) + "\n"
     return "\n".join(o) + "\n", expected
 
+def captured_text(value):
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
+
+
 def save_failure(seed, flags, source, details):
     root = os.environ.get("ORB_FUZZ_FAILURE_DIR", os.path.join("build", "fuzz-failures"))
     os.makedirs(root, exist_ok=True)
@@ -179,6 +185,9 @@ def main():
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 200
     seed0 = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     orb = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "orb")
+    if count < 1:
+        raise SystemExit("count must be positive")
+    print("fuzz: seeds %d..%d (%d programs)" % (seed0, seed0 + count - 1, count))
     bad = 0
     with tempfile.TemporaryDirectory(prefix="orb-fuzz-") as tmp:
         for k in range(count):
@@ -194,7 +203,7 @@ def main():
                     r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 except subprocess.TimeoutExpired as e:
                     details = "compile timed out after 30 seconds\ncommand: %s\nstdout: %s\nstderr: %s\n" % (
-                        " ".join(cmd), e.stdout or "", e.stderr or "")
+                        " ".join(cmd), captured_text(e.stdout), captured_text(e.stderr))
                     print("seed", seed, flags, "COMPILE TIMEOUT")
                     save_failure(seed, flags, src, details)
                     bad += 1
