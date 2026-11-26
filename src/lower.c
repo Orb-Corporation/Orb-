@@ -737,6 +737,10 @@ static Opnd lw_scalar(Node *n) {
 
 static bool integer_constant_bits(Node *n, uint64_t *value) {
     if (n->kind == N_INT) { *value = n->ival; return true; }
+    if (n->kind == N_IDENT && n->sym && n->sym->kind == S_CONST && n->sym->cv.kind == 1) {
+        *value = (uint64_t)n->sym->cv.i;
+        return true;
+    }
     if (n->kind == N_UNARY && n->op == TK_MINUS && n->a->kind == N_INT) {
         *value = (uint64_t)0 - n->a->ival;
         return true;
