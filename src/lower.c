@@ -767,10 +767,20 @@ static bool lower_mod_zero_test(Node *n, int lbl, bool jump_if) {
     // Keep divisor 1 out: signed remainder by -1 has an exceptional MIN case.
     if (divisor <= 1 || (divisor & (divisor - 1)) != 0) return false;
 
-    Opnd low_bits = bin(OP_AND, lw_scalar(mod->a), I((int64_t)(divisor - 1)), 0);
-    int cc = n->op == TK_EQ ? CC_EQ : CC_NE;
-    if (!jump_if) cc = cc_invert(cc);
-    jcc(cc, low_bits, I(0), lbl);
+    Opnd value = lw_scalar(mod->a);
+    uint64_t mask = divisor - 1;
+    bool divisible;
+    if (value.k == O_IMM) {
+        divisible = ((uint64_t)value.v & mask) == 0;
+    } else {
+        Opnd low_bits = bin(OP_AND, value, I((int64_t)mask), 0);
+        int cc = n->op == TK_EQ ? CC_EQ : CC_NE;
+        if (!jump_if) cc = cc_invert(cc);
+        jcc(cc, low_bits, I(0), lbl);
+        return true;
+    }
+    bool result = n->op == TK_EQ ? divisible : !divisible;
+    if (result == jump_if) jmp(lbl);
     return true;
 }
 
