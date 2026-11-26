@@ -193,14 +193,14 @@ def main():
                 try:
                     r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 except subprocess.TimeoutExpired as e:
-                    details = "compile timed out after 30 seconds\\ncommand: %s\\nstdout: %s\\nstderr: %s\\n" % (
+                    details = "compile timed out after 30 seconds\ncommand: %s\nstdout: %s\nstderr: %s\n" % (
                         " ".join(cmd), e.stdout or "", e.stderr or "")
                     print("seed", seed, flags, "COMPILE TIMEOUT")
                     save_failure(seed, flags, src, details)
                     bad += 1
                     break
                 if r.returncode != 0:
-                    details = "compile failed with exit code %d\\ncommand: %s\\nstdout:\\n%s\\nstderr:\\n%s" % (
+                    details = "compile failed with exit code %d\ncommand: %s\nstdout:\n%s\nstderr:\n%s" % (
                         r.returncode, " ".join(cmd), r.stdout, r.stderr)
                     print("seed", seed, flags, "COMPILE ERROR:", r.stderr[:300])
                     save_failure(seed, flags, src, details)
@@ -209,21 +209,21 @@ def main():
                 try:
                     r = subprocess.run([exe], capture_output=True, text=True, timeout=10)
                 except subprocess.TimeoutExpired as e:
-                    details = "program timed out after 10 seconds\\nseed: %d\\nflags: %s\\nstdout: %s\\nstderr: %s\\nexpected:\\n%s" % (
+                    details = "program timed out after 10 seconds\nseed: %d\nflags: %s\nstdout: %s\nstderr: %s\nexpected:\n%s" % (
                         seed, " ".join(flags) or "(optimized)", e.stdout or "", e.stderr or "", exp)
                     print("seed", seed, flags, "RUNTIME TIMEOUT")
                     save_failure(seed, flags, src, details)
                     bad += 1
                     break
                 if r.returncode != 0:
-                    details = "program exited with code %d\\nseed: %d\\nflags: %s\\nstdout:\\n%s\\nstderr:\\n%s\\nexpected:\\n%s" % (
+                    details = "program exited with code %d\nseed: %d\nflags: %s\nstdout:\n%s\nstderr:\n%s\nexpected:\n%s" % (
                         r.returncode, seed, " ".join(flags) or "(optimized)", r.stdout, r.stderr, exp)
                     print("seed", seed, flags, "RUNTIME ERROR:", r.stderr[:300])
                     save_failure(seed, flags, src, details)
                     bad += 1
                     break
                 if r.stdout != exp:
-                    details = "output mismatch\\nseed: %d\\nflags: %s\\nstdout:\\n%s\\nexpected:\\n%s\\nstderr:\\n%s" % (
+                    details = "output mismatch\nseed: %d\nflags: %s\nstdout:\n%s\nexpected:\n%s\nstderr:\n%s" % (
                         seed, " ".join(flags) or "(optimized)", r.stdout, exp, r.stderr)
                     print("seed", seed, flags, "MISMATCH")
                     save_failure(seed, flags, src, details)
