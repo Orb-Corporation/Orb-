@@ -160,7 +160,7 @@ Compiler internals and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 Run `make bench` to compare Orb! with GCC at `-O0` and `-O2`, plus Orb!'s
 `--unchecked` mode. The runner warms each executable, interleaves the variants, takes
 the median of seven timed runs by default, and checks every variant's complete output
-against the same reference. CI runs three timed samples and keeps the measurements in
+against the same reference. CI runs seven timed samples and keeps the measurements in
 the workflow log. Timings cover process startup and execution on the current machine;
 they are measurements, not a performance pass/fail threshold.
 
