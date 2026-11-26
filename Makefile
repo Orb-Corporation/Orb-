@@ -38,8 +38,10 @@ serve:
 	@echo "starter: http://localhost:8000/examples/web/starter/"
 	python3 -m http.server 8000
 
+BENCH_SAMPLES ?= 7
+
 bench: $(BUILD)/orb
-	bash bench/run.sh
+	python3 bench/run.py --samples $(BENCH_SAMPLES)
 
 install: $(BUILD)/orb
 	install -d $(DESTDIR)$(PREFIX)/bin
