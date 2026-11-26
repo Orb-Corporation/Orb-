@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Differential fuzzer: random Orb! programs vs. a Python reference implementation.
 usage: python3 tests/fuzz.py [count] [seed]"""
-import random, subprocess, sys, os, tempfile
+import random, subprocess, sys, os, tempfile, shutil
 
 M = (1 << 64) - 1
 def wrap(x):
@@ -263,14 +263,16 @@ def main():
             source_path = os.path.join(tmp, "f.orb")
             with open(source_path, "w", encoding="utf-8") as f:
                 f.write(source)
+            failed = False
             for backend, modes in backends:
                 executable_path = os.path.join(tmp, "f-" + backend + (".wasm" if backend == "wasm" else ""))
                 for flags in modes:
                     if not check_variant(orb, node, runner, source_path, executable_path,
                                          source, expected, seed, backend, flags):
                         bad += 1
+                        failed = True
                         break
-                if bad:
+                if failed:
                     break
     print("fuzz: %d programs, %d failures" % (count, bad))
     sys.exit(1 if bad else 0)
