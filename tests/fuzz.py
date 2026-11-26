@@ -163,26 +163,74 @@ def gen_program(seed):
     expected = "\n".join(str(env[v]) for v in vars_) + "\n"
     return "\n".join(o) + "\n", expected
 
+def save_failure(seed, flags, source, details):
+    root = os.environ.get("ORB_FUZZ_FAILURE_DIR", os.path.join("build", "fuzz-failures"))
+    os.makedirs(root, exist_ok=True)
+    mode = "no-opt" if flags else "optimized"
+    stem = os.path.join(root, "seed-%d-%s" % (seed, mode))
+    with open(stem + ".orb", "w", encoding="utf-8") as f:
+        f.write(source)
+    with open(stem + ".txt", "w", encoding="utf-8") as f:
+        f.write(details)
+    print("  reproducer saved: %s.orb" % stem, file=sys.stderr)
+
+
 def main():
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 200
     seed0 = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     orb = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "orb")
-    tmp = tempfile.mkdtemp()
     bad = 0
-    for k in range(count):
-        seed = seed0 + k
-        src, exp = gen_program(seed)
-        p = os.path.join(tmp, "f.orb")
-        open(p, "w").write(src)
-        for flags in ([], ["--no-opt"]):
-            r = subprocess.run([orb, "build", p, "-o", os.path.join(tmp, "f.bin")] + flags, capture_output=True, text=True)
-            if r.returncode != 0:
-                print("seed", seed, flags, "COMPILE ERROR:", r.stderr[:300]); bad += 1; open("/tmp/fuzz_fail_%d.orb" % seed, "w").write(src); break
-            r = subprocess.run([os.path.join(tmp, "f.bin")], capture_output=True, text=True)
-            if r.stdout != exp:
-                print("seed", seed, flags, "MISMATCH"); bad += 1
-                open("/tmp/fuzz_fail_%d.orb" % seed, "w").write(src)
-                break
+    with tempfile.TemporaryDirectory(prefix="orb-fuzz-") as tmp:
+        for k in range(count):
+            seed = seed0 + k
+            src, exp = gen_program(seed)
+            p = os.path.join(tmp, "f.orb")
+            exe = os.path.join(tmp, "f.bin")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(src)
+            for flags in ([], ["--no-opt"]):
+                cmd = [orb, "build", p, "-o", exe] + flags
+                try:
+                    r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                except subprocess.TimeoutExpired as e:
+                    details = "compile timed out after 30 seconds\\ncommand: %s\\nstdout: %s\\nstderr: %s\\n" % (
+                        " ".join(cmd), e.stdout or "", e.stderr or "")
+                    print("seed", seed, flags, "COMPILE TIMEOUT")
+                    save_failure(seed, flags, src, details)
+                    bad += 1
+                    break
+                if r.returncode != 0:
+                    details = "compile failed with exit code %d\\ncommand: %s\\nstdout:\\n%s\\nstderr:\\n%s" % (
+                        r.returncode, " ".join(cmd), r.stdout, r.stderr)
+                    print("seed", seed, flags, "COMPILE ERROR:", r.stderr[:300])
+                    save_failure(seed, flags, src, details)
+                    bad += 1
+                    break
+                try:
+                    r = subprocess.run([exe], capture_output=True, text=True, timeout=10)
+                except subprocess.TimeoutExpired as e:
+                    details = "program timed out after 10 seconds\\nseed: %d\\nflags: %s\\nstdout: %s\\nstderr: %s\\nexpected:\\n%s" % (
+                        seed, " ".join(flags) or "(optimized)", e.stdout or "", e.stderr or "", exp)
+                    print("seed", seed, flags, "RUNTIME TIMEOUT")
+                    save_failure(seed, flags, src, details)
+                    bad += 1
+                    break
+                if r.returncode != 0:
+                    details = "program exited with code %d\\nseed: %d\\nflags: %s\\nstdout:\\n%s\\nstderr:\\n%s\\nexpected:\\n%s" % (
+                        r.returncode, seed, " ".join(flags) or "(optimized)", r.stdout, r.stderr, exp)
+                    print("seed", seed, flags, "RUNTIME ERROR:", r.stderr[:300])
+                    save_failure(seed, flags, src, details)
+                    bad += 1
+                    break
+                if r.stdout != exp:
+                    details = "output mismatch\\nseed: %d\\nflags: %s\\nstdout:\\n%s\\nexpected:\\n%s\\nstderr:\\n%s" % (
+                        seed, " ".join(flags) or "(optimized)", r.stdout, exp, r.stderr)
+                    print("seed", seed, flags, "MISMATCH")
+                    save_failure(seed, flags, src, details)
+                    bad += 1
+                    break
     print("fuzz: %d programs, %d failures" % (count, bad))
     sys.exit(1 if bad else 0)
+
+
 main()
