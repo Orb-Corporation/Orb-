@@ -1,0 +1,23 @@
+fn main() {
+    signed_even := 0;
+    multiple_of_negative_four := 0;
+    not_multiple_of_eight := 0;
+
+    for x in -10..10 {
+        if x % 2 == 0 { signed_even += 1; }
+        if 0 == x % -4 { multiple_of_negative_four += 1; }
+        if x % 8 != 0 { not_multiple_of_eight += 1; }
+    }
+
+    unsigned_multiple_of_four := 0;
+    unsigned_not_multiple_of_eight := 0;
+    for i in 0..11 {
+        x := i as u64;
+        if x % 4 == 0 { unsigned_multiple_of_four += 1; }
+        if 0 != x % 8 { unsigned_not_multiple_of_eight += 1; }
+    }
+
+    println(signed_even, " ", multiple_of_negative_four, " ",
+            not_multiple_of_eight, " ", unsigned_multiple_of_four, " ",
+            unsigned_not_multiple_of_eight);
+}
