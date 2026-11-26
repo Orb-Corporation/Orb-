@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -25,6 +27,12 @@ jobs:
         run: make
       - name: Native regression tests
         run: make test
+      - name: Differential compiler fuzzing
+        env:
+          FUZZ_COUNT: ${{ github.event_name == 'schedule' && '2000' || '200' }}
+          FUZZ_SEED: ${{ github.run_number }}
+          ORB_FUZZ_FAILURE_DIR: build/fuzz-failures
+        run: python3 tests/fuzz.py "$FUZZ_COUNT" "$FUZZ_SEED"
       - name: WebAssembly regression tests
         run: make test-wasm
       - name: Install Chromium test runner
@@ -36,6 +44,14 @@ jobs:
         run: make test-web
       - name: Build browser examples
         run: make web-examples
+      - name: Upload fuzz reproducer
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-fuzz-failures-${{ github.run_id }}
+          path: build/fuzz-failures/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Check installer and release packager syntax
         run: python -m py_compile tools/install.py tools/setup.py tools/package-release.py tools/orb-pkg.py
       - name: Build and inspect Linux release package

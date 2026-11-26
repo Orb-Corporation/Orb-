@@ -82,8 +82,13 @@ checks runtime panic messages and exit status in `tests/panic`; and runs CLI smo
 The VS Code extension tests are also run when Node.js is installed (otherwise they are
 explicitly skipped).
 
-The differential fuzzer is a separate, opt-in test and is **not** run by `make test`:
-`python3 tests/fuzz.py 500` generates and checks 500 programs, with and without the optimiser.
+The differential fuzzer remains separate from `make test` and can be run locally with
+`python3 tests/fuzz.py 500`. GitHub Actions runs 200 generated programs on pushes and pull
+requests, then 2,000 programs nightly. Every program is checked natively with and without
+optimisation; when Node.js is available, it is also checked by WebAssembly in the default,
+dispatch and unoptimised modes. Compilation and execution have time limits. Each run prints its
+seed range for exact replay. A failing seed saves its `.orb` reproducer and a log under
+`build/fuzz-failures/`; CI uploads these files as an artifact so a compiler bug can be replayed.
 
 * `tests/ok`: programs with expected output, each run default, `--no-opt` and `--unchecked`.
 * `tests/err`: each program must fail to compile with a specific message.

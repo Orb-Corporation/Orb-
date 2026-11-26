@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Differential fuzzer: random Orb! programs vs. a Python reference implementation.
 usage: python3 tests/fuzz.py [count] [seed]"""
-import random, subprocess, sys, os, tempfile
+import random, subprocess, sys, os, tempfile, shutil
 
 M = (1 << 64) - 1
 def wrap(x):
@@ -163,26 +163,119 @@ def gen_program(seed):
     expected = "\n".join(str(env[v]) for v in vars_) + "\n"
     return "\n".join(o) + "\n", expected
 
+def captured_text(value):
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
+
+
+def save_failure(seed, flags, source, details, backend):
+    root = os.environ.get("ORB_FUZZ_FAILURE_DIR", os.path.join("build", "fuzz-failures"))
+    os.makedirs(root, exist_ok=True)
+    mode = "no-opt" if "--no-opt" in flags else "dispatch" if "--wasm-dispatch" in flags else "optimized"
+    stem = os.path.join(root, "seed-%d-%s-%s" % (seed, backend, mode))
+    with open(stem + ".orb", "w", encoding="utf-8") as f:
+        f.write(source)
+    with open(stem + ".txt", "w", encoding="utf-8") as f:
+        f.write(details)
+    print("  reproducer saved: %s.orb" % stem, file=sys.stderr)
+
+
+def check_variant(orb, node, runner, source_path, executable_path, source, expected, seed, backend, flags):
+    mode = " ".join(flags) or "(optimized)"
+    if backend == "native":
+        compile_cmd = [orb, "build", source_path, "-o", executable_path] + flags
+        run_cmd = [executable_path]
+    else:
+        compile_cmd = [orb, "build", source_path, "--target", "wasm"] + flags + ["-o", executable_path]
+        run_cmd = [node, runner, executable_path]
+
+    try:
+        result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired as e:
+        details = (
+            "%s compilation timed out after 30 seconds\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s"
+        ) % (backend, seed, mode, " ".join(compile_cmd), captured_text(e.stdout), captured_text(e.stderr))
+        print("seed", seed, backend, flags, "COMPILE TIMEOUT")
+        save_failure(seed, flags, source, details, backend)
+        return False
+    if result.returncode != 0:
+        details = (
+            "%s compilation failed with exit code %d\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s"
+        ) % (backend, result.returncode, seed, mode, " ".join(compile_cmd), result.stdout, result.stderr)
+        print("seed", seed, backend, flags, "COMPILE ERROR:", result.stderr[:300])
+        save_failure(seed, flags, source, details, backend)
+        return False
+
+    try:
+        result = subprocess.run(run_cmd, capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired as e:
+        details = (
+            "%s program timed out after 10 seconds\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s\nexpected:\n%s"
+        ) % (backend, seed, mode, " ".join(run_cmd), captured_text(e.stdout), captured_text(e.stderr), expected)
+        print("seed", seed, backend, flags, "RUNTIME TIMEOUT")
+        save_failure(seed, flags, source, details, backend)
+        return False
+    if result.returncode != 0:
+        details = (
+            "%s program exited with code %d\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nstderr:\n%s\nexpected:\n%s"
+        ) % (backend, result.returncode, seed, mode, " ".join(run_cmd), result.stdout, result.stderr, expected)
+        print("seed", seed, backend, flags, "RUNTIME ERROR:", result.stderr[:300])
+        save_failure(seed, flags, source, details, backend)
+        return False
+    if result.stdout != expected:
+        details = (
+            "%s output mismatch\nseed: %d\nflags: %s\ncommand: %s\n"
+            "stdout:\n%s\nexpected:\n%s\nstderr:\n%s"
+        ) % (backend, seed, mode, " ".join(run_cmd), result.stdout, expected, result.stderr)
+        print("seed", seed, backend, flags, "MISMATCH")
+        save_failure(seed, flags, source, details, backend)
+        return False
+    return True
+
+
 def main():
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 200
     seed0 = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    orb = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "build", "orb")
-    tmp = tempfile.mkdtemp()
+    if count < 1:
+        raise SystemExit("count must be positive")
+    root = os.path.dirname(os.path.abspath(__file__))
+    orb = os.path.join(root, "..", "build", "orb")
+    node = shutil.which("node")
+    runner = os.path.join(root, "..", "tools", "orb-node.js")
+    backends = [("native", [[], ["--no-opt"]])]
+    if node:
+        backends.append(("wasm", [[], ["--wasm-dispatch"], ["--no-opt"]]))
+    else:
+        print("SKIP: WASM differential fuzzing (Node.js not installed)")
+    variants = sum(len(modes) for _backend, modes in backends)
+    print("fuzz: seeds %d..%d (%d programs, %d backend/mode combinations each)" %
+          (seed0, seed0 + count - 1, count, variants))
     bad = 0
-    for k in range(count):
-        seed = seed0 + k
-        src, exp = gen_program(seed)
-        p = os.path.join(tmp, "f.orb")
-        open(p, "w").write(src)
-        for flags in ([], ["--no-opt"]):
-            r = subprocess.run([orb, "build", p, "-o", os.path.join(tmp, "f.bin")] + flags, capture_output=True, text=True)
-            if r.returncode != 0:
-                print("seed", seed, flags, "COMPILE ERROR:", r.stderr[:300]); bad += 1; open("/tmp/fuzz_fail_%d.orb" % seed, "w").write(src); break
-            r = subprocess.run([os.path.join(tmp, "f.bin")], capture_output=True, text=True)
-            if r.stdout != exp:
-                print("seed", seed, flags, "MISMATCH"); bad += 1
-                open("/tmp/fuzz_fail_%d.orb" % seed, "w").write(src)
-                break
+    with tempfile.TemporaryDirectory(prefix="orb-fuzz-") as tmp:
+        for k in range(count):
+            seed = seed0 + k
+            source, expected = gen_program(seed)
+            source_path = os.path.join(tmp, "f.orb")
+            with open(source_path, "w", encoding="utf-8") as f:
+                f.write(source)
+            failed = False
+            for backend, modes in backends:
+                executable_path = os.path.join(tmp, "f-" + backend + (".wasm" if backend == "wasm" else ""))
+                for flags in modes:
+                    if not check_variant(orb, node, runner, source_path, executable_path,
+                                         source, expected, seed, backend, flags):
+                        bad += 1
+                        failed = True
+                        break
+                if failed:
+                    break
     print("fuzz: %d programs, %d failures" % (count, bad))
     sys.exit(1 if bad else 0)
+
+
 main()
