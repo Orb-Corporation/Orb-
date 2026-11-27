@@ -32,6 +32,7 @@ jobs:
             make
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-binutils
+            diffutils
       - name: Validate MinGW installer helper
         shell: pwsh
         env:
