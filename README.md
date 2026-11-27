@@ -161,8 +161,10 @@ Run `make bench` to compare Orb! with GCC at `-O0` and `-O2`, plus Orb!'s
 `--unchecked` mode. The runner warms each executable, interleaves the variants, takes
 the median of seven timed runs by default, and checks every variant's complete output
 against the same reference. CI runs seven timed samples and keeps the measurements in
-the workflow log. Timings cover process startup and execution on the current machine;
-they are measurements, not a performance pass/fail threshold.
+the workflow log. For pull requests, CI also builds the target branch's compiler and alternates
+base and candidate runs in the same job, reporting their median timing change. Timings cover
+process startup and execution on the current machine; they are measurements, not a performance
+pass/fail threshold.
 
 The table below is a historical snapshot from the development machine, measured with the
 older best-of-three runner. It is useful as a rough reference, but the current runner should

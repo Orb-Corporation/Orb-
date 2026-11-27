@@ -36,7 +36,20 @@ jobs:
         run: make test-web
       - name: Build browser examples
         run: make web-examples
+      - name: Check out base compiler for paired benchmarks
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: build/bench-base
+      - name: Build base compiler
+        if: github.event_name == 'pull_request'
+        run: make -C build/bench-base
+      - name: Record paired native performance benchmarks
+        if: github.event_name == 'pull_request'
+        run: python3 bench/run.py --samples 7 --reference-orb build/bench-base/build/orb
       - name: Record native performance benchmarks
+        if: github.event_name != 'pull_request'
         run: make bench BENCH_SAMPLES=7
       - name: Check installer and release packager syntax
         run: python -m py_compile tools/install.py tools/setup.py tools/package-release.py tools/orb-pkg.py
