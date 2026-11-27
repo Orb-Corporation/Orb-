@@ -706,7 +706,10 @@ static void emit_ins(Ins *i, int idx, int total) {
         E("jmp %s%d_%d", lp(), fid, i->label);
         break;
     case OP_JCC:
-        emit_cmp(i->a, i->b);
+        if (i->mode == JCC_MODE_MASK)
+            E("testq %s, %s", src(i->b, RCX), src(i->a, RAX));
+        else
+            emit_cmp(i->a, i->b);
         E("j%s %s%d_%d", CCN[i->cc], lp(), fid, i->label);
         break;
     case OP_MOV: emit_mov(i); break;
