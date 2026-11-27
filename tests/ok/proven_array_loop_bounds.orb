@@ -1,6 +1,7 @@
 const SIDE = 32;
 const SMALL = 10;
 large: [SIDE * SIDE]i64;
+copied: [SIDE * SIDE]i64;
 small: [SMALL]i64;
 
 fn main() {
@@ -10,10 +11,14 @@ fn main() {
         }
     }
 
+    for i, value in large {
+        copied[i] = value;
+    }
+
     total := 0;
     for i in 0..SIDE {
         for j in 0..SIDE {
-            total += large[i * SIDE + j];
+            total += copied[i * SIDE + j];
         }
     }
 
