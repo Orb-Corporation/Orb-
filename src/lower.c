@@ -1244,7 +1244,17 @@ static void lw_for(Node *n) {
     mov(ctr, I(0));
     Sym *iv = n->name2 ? n->sym : NULL;
     Sym *ev = n->sym2;
-    if (iv) bind_loop_var(iv, NULL, ctr);
+    bool have_index_range = false;
+    int64_t index_hi = 0;
+    if (iv) {
+        bind_loop_var(iv, NULL, ctr);
+        if (it->kind == TY_ARRAY && it->len > 0 && !iv->addr_taken &&
+            ty_is_int(iv->type) && ty_is_signed(iv->type) &&
+            int_fits_type(iv->type, it->len - 1)) {
+            index_hi = it->len - 1;
+            have_index_range = true;
+        }
+    }
     int esz = type_size(et);
     jmp(lcond);
     label(lbody);
@@ -1266,7 +1276,12 @@ static void lw_for(Node *n) {
         } else emit_copy(aslot(ev->slot), ea, esz);
     }
     vpush(G.loops, lp);
+    if (have_index_range) {
+        RangeFact fact = { iv, 0, index_hi };
+        vpush(G.ranges, fact);
+    }
     lw_block(n->c);
+    if (have_index_range) G.ranges.n--;
     G.loops.n--;
     label(lcont);
     { Ins *inc = emit(OP_ADD); inc->dst = ctr; inc->a = R(ctr); inc->b = I(1); }
