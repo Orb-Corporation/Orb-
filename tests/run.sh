@@ -2,9 +2,10 @@
 # Orb! test suite: runs every program in tests/ok (stdout compared with .out),
 # tests/err (compile errors) and tests/panic (runtime panics).
 cd "$(dirname "$0")/.." || exit 1
-ORB=./build/orb
+if [ -x ./build/orb.exe ]; then ORB=./build/orb.exe; EXE_SUFFIX=exe; else ORB=./build/orb; EXE_SUFFIX=bin; fi
 pass=0; fail=0
 tmp=$(mktemp -d)
+TEST_EXE=$tmp/t.$EXE_SUFFIX
 
 ok() { pass=$((pass+1)); }
 bad() { fail=$((fail+1)); echo "FAIL: $1"; [ -n "$2" ] && echo "      $2"; }
@@ -18,9 +19,12 @@ for f in tests/ok/*.orb; do
         continue
     fi
     for mode in "" "--no-opt" "--unchecked"; do
-        $ORB build $f $mode -o $tmp/t.bin 2> $tmp/err.txt || { bad "$f [$mode] (compile)" "$(head -3 $tmp/err.txt)"; continue; }
-        $tmp/t.bin < $input > $tmp/out.txt 2> $tmp/stderr.txt
-        if cmp -s $tmp/out.txt "$expected"; then ok; else bad "$f [$mode] (output differs)" "$(diff $tmp/out.txt $expected | head -3)"; fi
+        $ORB build $f $mode -o $TEST_EXE 2> $tmp/err.txt || { bad "$f [$mode] (compile)" "$(head -3 $tmp/err.txt)"; continue; }
+        $TEST_EXE < $input > $tmp/out.txt 2> $tmp/stderr.txt
+        # Windows runtimes emit CRLF; compare text output independent of line endings.
+        sed 's/\r$//' "$tmp/out.txt" > "$tmp/out-normalized.txt"
+        sed 's/\r$//' "$expected" > "$tmp/expected-normalized.txt"
+        if cmp -s "$tmp/out-normalized.txt" "$tmp/expected-normalized.txt"; then ok; else bad "$f [$mode] (output differs)" "$(diff "$tmp/out-normalized.txt" "$tmp/expected-normalized.txt" | head -3)"; fi
     done
 done
 
@@ -36,8 +40,8 @@ for f in tests/panic/*.orb; do
     want_code=$(sed -n 's#^// exit: ##p' "$f" | head -1)
     [ -n "$want_code" ] || want_code=101
     if [ -z "$want" ]; then bad "$f (missing // expect fixture)" ""; continue; fi
-    $ORB build "$f" -o "$tmp/t.bin" 2> "$tmp/err.txt" || { bad "$f (compile)" "$(head -3 "$tmp/err.txt")"; continue; }
-    "$tmp/t.bin" > /dev/null 2> "$tmp/stderr.txt"; code=$?
+    $ORB build "$f" -o "$TEST_EXE" 2> "$tmp/err.txt" || { bad "$f (compile)" "$(head -3 "$tmp/err.txt")"; continue; }
+    "$TEST_EXE" > /dev/null 2> "$tmp/stderr.txt"; code=$?
     if [ "$code" -ne "$want_code" ]; then bad "$f (expected exit code $want_code, got $code)"; continue; fi
     if grep -qF -- "$want" "$tmp/stderr.txt"; then ok; else bad "$f (stderr)" "wanted: $want / got: $(head -1 "$tmp/stderr.txt")"; fi
 done

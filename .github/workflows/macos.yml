@@ -1,0 +1,31 @@
+name: Orb! native macOS regression tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-native:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build compiler
+        run: make
+      - name: Native macOS regression tests
+        run: make test
+      - name: Differential compiler fuzzing
+        run: python3 tests/fuzz.py 500 1

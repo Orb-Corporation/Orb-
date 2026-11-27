@@ -857,6 +857,11 @@ static void emit_function(FnIR *f, int id) {
     E("pushq %%rbp");
     E("movq %%rsp, %%rbp");
     for (int k = 0; k < nsaved; k++) E("pushq %s", R64[saved_regs[k]]);
+    // Windows must touch each guard page before reserving a large stack frame.
+    if (g_target == TGT_WINDOWS && frame >= 4096) {
+        E("movq $%d, %%rax", frame);
+        E("call ___chkstk_ms");
+    }
     if (frame) E("subq $%d, %%rsp", frame);
     int np = 0;
     while (np < f->ins.n && f->ins.d[np].op == OP_PARAM) np++;

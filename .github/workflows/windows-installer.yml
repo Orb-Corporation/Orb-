@@ -32,6 +32,7 @@ jobs:
             make
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-binutils
+            diffutils
       - name: Validate MinGW installer helper
         shell: pwsh
         env:
@@ -75,6 +76,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Run native Windows compiler regression suite
+        shell: msys2 {0}
+        run: make test
       - name: Smoke-test the package-manager CLI
         shell: pwsh
         run: |
