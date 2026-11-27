@@ -1,0 +1,2 @@
+# Preserve test input bytes on every platform. Some fixtures count input bytes.
+tests/ok/*.in -text
