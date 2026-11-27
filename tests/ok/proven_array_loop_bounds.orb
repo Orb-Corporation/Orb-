@@ -1,0 +1,29 @@
+const SIDE = 32;
+const SMALL = 10;
+large: [SIDE * SIDE]i64;
+small: [SMALL]i64;
+
+fn main() {
+    for i in 0..SIDE {
+        for j in 0..SIDE {
+            large[i * SIDE + j] = i * SIDE + j;
+        }
+    }
+
+    total := 0;
+    for i in 0..SIDE {
+        for j in 0..SIDE {
+            total += large[i * SIDE + j];
+        }
+    }
+
+    for i in -5..=4 {
+        small[i + 5] = i;
+    }
+    signed_total := 0;
+    for i in 0..SMALL {
+        signed_total += small[i];
+    }
+
+    println(total, " ", signed_total);
+}
