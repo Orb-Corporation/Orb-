@@ -1387,7 +1387,8 @@ void ir_dump(FILE *f, FnIR *ir) {
         fprintf(f, "    %-7s", opnames[i->op]);
         if (i->dst >= 0) fprintf(f, " v%d", i->dst);
         if (i->dst2 >= 0) fprintf(f, ", v%d", i->dst2);
-        if (i->op == OP_JCC || i->op == OP_SET || i->op == OP_FSET) fprintf(f, " [%s]", cc_name(i->cc));
+        if (i->op == OP_JCC && i->mode == JCC_MODE_MASK) fprintf(f, " [mask-test %s]", cc_name(i->cc));
+        else if (i->op == OP_JCC || i->op == OP_SET || i->op == OP_FSET) fprintf(f, " [%s]", cc_name(i->cc));
         if (i->a.k) { fprintf(f, " "); dump_opnd(f, i->a); }
         if (i->b.k) { fprintf(f, ", "); dump_opnd(f, i->b); }
         if (i->c.k) { fprintf(f, ", "); dump_opnd(f, i->c); }
