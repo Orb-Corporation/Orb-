@@ -1,0 +1,9 @@
+// expect: panic: index out of bounds
+const N = 32;
+values: [N]i64;
+
+fn main() {
+    for i in 0..N + 1 {
+        values[i] = i;
+    }
+}
