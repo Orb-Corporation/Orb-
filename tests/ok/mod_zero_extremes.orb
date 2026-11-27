@@ -3,7 +3,7 @@ const MIN64: i64 = 0 - 9223372036854775807 - 1;
 fn main() {
     min := MIN64;
     max := 9223372036854775807;
-    umax := 18446744073709551615 as u64;
+    umax := (0 as u64) - (1 as u64);
 
     println(min % 2 == 0, " ", min % -8 == 0, " ", min % MIN64 == 0);
     println(max % 2 != 0, " ", max % 16 != 0, " ", max % MIN64 == 0);
