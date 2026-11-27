@@ -126,6 +126,14 @@ def gen_program(seed):
         else:
             n = rnd.randint(1, 12)
             stmts.append(("loop", n, rnd.choice(vars_), g.expr(3, vars_ + ["i"]), rnd.choice(vars_), g.expr(3, vars_ + ["i"])))
+    # Add guaranteed branch-predicate cases for the modulo strength reduction.
+    divisors = [2, 4, 8, 16, 32, 256, -2, -4, -8, -16, -32, -256]
+    for op in ("==", "!=", "==", "!="):
+        x = rnd.choice(vars_)
+        divisor = rnd.choice(divisors)
+        stmts.append(("mod_if", x, divisor, op,
+                      rnd.choice(vars_), g.expr(3, vars_),
+                      rnd.choice(vars_), g.expr(3, vars_)))
     # emit orb
     o = []
     for (fi, params, body) in funcs:
@@ -139,6 +147,10 @@ def gen_program(seed):
             o.append("    %s = f%d(%s);" % (s[1], s[2], ", ".join(show_orb(a, helpers) for a in s[3])))
         elif s[0] == "if":
             o.append("    if %s != 0 { %s = %s; } else { %s = %s; }" % (show_orb(s[1], helpers), s[2], show_orb(s[3], helpers), s[4], show_orb(s[5], helpers)))
+        elif s[0] == "mod_if":
+            o.append("    if %s %% (%d) %s 0 { %s = %s; } else { %s = %s; }" %
+                     (s[1], s[2], s[3], s[4], show_orb(s[5], helpers),
+                      s[6], show_orb(s[7], helpers)))
         else:
             o.append("    for i in 0..%d { %s = %s; if i %% 2 == 1 { %s = %s; } }" % (s[1], s[2], show_orb(s[3], helpers), s[4], show_orb(s[5], helpers)))
     for v in vars_: o.append("    println(%s);" % v)
@@ -153,6 +165,10 @@ def gen_program(seed):
         elif s[0] == "if":
             if ev(s[1], env) != 0: env[s[2]] = ev(s[3], env)
             else: env[s[4]] = ev(s[5], env)
+        elif s[0] == "mod_if":
+            rem = ev(("divc", "%", ("var", s[1]), s[2]), env)
+            if (rem == 0) == (s[3] == "=="): env[s[4]] = ev(s[5], env)
+            else: env[s[6]] = ev(s[7], env)
         else:
             for i in range(s[1]):
                 env2 = dict(env); env2["i"] = i
