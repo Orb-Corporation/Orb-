@@ -396,6 +396,18 @@ static int *lab_bb;
 
 static bool is_term(Ins *i) { return i->op == OP_JMP || i->op == OP_JCC || i->op == OP_RET || (i->op == OP_CALL && i->noret); }
 
+static void emit_jcc_cond(Ins *i) {
+    get(i->a, 'i');
+    get(i->b, 'i');
+    if (i->mode == JCC_MODE_MASK) {
+        op(0x83);              // i64.and
+        i64c(0);
+        op(i->cc == CC_EQ ? 0x51 : 0x52); // i64.eq / i64.ne
+    } else {
+        cmp_op(i->cc);
+    }
+}
+
 static void build_blocks(int first) {
     int n = cir->ins.n;
     bool *lead = xcalloc((size_t)n + 2);
@@ -496,7 +508,7 @@ nested:;
             if (tg != b + 1) {
                 int d = tg > b ? find_depth(0, tg) : find_depth(1, tg);
                 if (d < 0) { free(minsrc); free(maxback); free(cs.d); return false; }
-                if (t->op == OP_JCC) { get(t->a, 'i'); get(t->b, 'i'); cmp_op(t->cc); opu(0x0D, (uint64_t)d); }
+                if (t->op == OP_JCC) { emit_jcc_cond(t); opu(0x0D, (uint64_t)d); }
                 else opu(0x0C, (uint64_t)d);
             }
         } else if (t && t->op == OP_RET) {
@@ -524,7 +536,7 @@ static void emit_dispatch(void) {
         if (t && (t->op == OP_JMP || t->op == OP_JCC)) {
             int tg = lab_bb[t->label];
             if (t->op == OP_JCC) {
-                get(t->a, 'i'); get(t->b, 'i'); cmp_op(t->cc);
+                emit_jcc_cond(t);
                 op(0x04); op(0x40);
                 i32c(tg); lset(L_pc); opu(0x0C, (uint64_t)depth_loop + 1);
                 op(0x0B);

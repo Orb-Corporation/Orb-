@@ -40,6 +40,7 @@ static Ins *emit(int op) {
 static void label(int l) { emit(OP_LABEL)->label = l; }
 static void jmp(int l) { emit(OP_JMP)->label = l; }
 static void jcc(int cc, Opnd a, Opnd b, int l) { Ins *i = emit(OP_JCC); i->cc = cc; i->a = a; i->b = b; i->label = l; }
+static void jcc_mask(int cc, Opnd value, Opnd mask, int l) { Ins *i = emit(OP_JCC); i->cc = cc; i->a = value; i->b = mask; i->label = l; i->mode = JCC_MODE_MASK; }
 static int newslot(int size, int align) {
     Slot s = { size ? size : 1, align ? align : 1, 0 };
     vpush(G.ir->slots, s);
@@ -777,10 +778,15 @@ static bool lower_mod_zero_test(Node *n, int lbl, bool jump_if) {
     if (value.k == O_IMM) {
         divisible = ((uint64_t)value.v & mask) == 0;
     } else {
-        Opnd low_bits = bin(OP_AND, value, I((int64_t)mask), 0);
         int cc = n->op == TK_EQ ? CC_EQ : CC_NE;
         if (!jump_if) cc = cc_invert(cc);
-        jcc(cc, low_bits, I(0), lbl);
+        // x86 TEST accepts a sign-extended imm32; larger masks keep the generic AND path.
+        if (mask <= 2147483647u) {
+            jcc_mask(cc, value, I((int64_t)mask), lbl);
+        } else {
+            Opnd low_bits = bin(OP_AND, value, I((int64_t)mask), 0);
+            jcc(cc, low_bits, I(0), lbl);
+        }
         return true;
     }
     bool result = n->op == TK_EQ ? divisible : !divisible;
@@ -1381,7 +1387,8 @@ void ir_dump(FILE *f, FnIR *ir) {
         fprintf(f, "    %-7s", opnames[i->op]);
         if (i->dst >= 0) fprintf(f, " v%d", i->dst);
         if (i->dst2 >= 0) fprintf(f, ", v%d", i->dst2);
-        if (i->op == OP_JCC || i->op == OP_SET || i->op == OP_FSET) fprintf(f, " [%s]", cc_name(i->cc));
+        if (i->op == OP_JCC && i->mode == JCC_MODE_MASK) fprintf(f, " [mask-test %s]", cc_name(i->cc));
+        else if (i->op == OP_JCC || i->op == OP_SET || i->op == OP_FSET) fprintf(f, " [%s]", cc_name(i->cc));
         if (i->a.k) { fprintf(f, " "); dump_opnd(f, i->a); }
         if (i->b.k) { fprintf(f, ", "); dump_opnd(f, i->b); }
         if (i->c.k) { fprintf(f, ", "); dump_opnd(f, i->c); }

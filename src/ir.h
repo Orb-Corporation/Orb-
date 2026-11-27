@@ -7,6 +7,7 @@ enum { O_NONE, O_REG, O_IMM, O_SLOT, O_GLOB };
 typedef struct { int k; int64_t v; } Opnd;
 
 enum { CC_EQ, CC_NE, CC_LT, CC_LE, CC_GT, CC_GE, CC_B, CC_BE, CC_A, CC_AE };
+enum { JCC_MODE_COMPARE, JCC_MODE_MASK };
 
 enum {
     OP_NOP, OP_LABEL, OP_JMP, OP_JCC,
@@ -25,7 +26,7 @@ enum {
 };
 
 typedef struct Ins {
-    int op, cc, w;
+    int op, cc, w, mode;
     bool sg, noret;
     int dst, dst2;
     Opnd a, b, c;
