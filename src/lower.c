@@ -9,6 +9,7 @@ enum { A_SLOT, A_REG, A_GLOB };
 
 typedef struct { int k; int64_t base; int idx; int scale; int64_t off; } Addr;
 typedef struct { int brk, cont; } Loop;
+typedef struct { Sym *sym; int64_t lo, hi; } RangeFact;
 
 static struct {
     FnIR *ir;
@@ -16,6 +17,7 @@ static struct {
     Type *ret;
     int sret;
     VEC(Loop) loops;
+    VEC(RangeFact) ranges;
     int file;
 } G;
 
@@ -271,6 +273,67 @@ static void check_bounds(Opnd idx, Opnd len, int line) {
     Opnd a[4] = { glob(file_str()), I(line), idx, len };
     call_core("panic_bounds", a, 4, false);
     label(ok);
+}
+
+static RangeFact *find_range(Sym *sym) {
+    for (int i = G.ranges.n - 1; i >= 0; i--)
+        if (G.ranges.d[i].sym == sym) return &G.ranges.d[i];
+    return NULL;
+}
+
+static bool range_fits(Node *n, __int128 lo, __int128 hi, int64_t *out_lo, int64_t *out_hi) {
+    if (!n->type || !ty_is_int(n->type) || !ty_is_signed(n->type) || lo > hi ||
+        !int_fits_type(n->type, lo) || !int_fits_type(n->type, hi)) return false;
+    *out_lo = (int64_t)lo;
+    *out_hi = (int64_t)hi;
+    return true;
+}
+
+// Track exact intervals only while every arithmetic result is representable.
+// Orb integer arithmetic wraps, so overflowing intervals must not prove safety.
+static bool range_expr(Node *n, int64_t *lo, int64_t *hi) {
+    if (!n || !n->type || !ty_is_int(n->type) || !ty_is_signed(n->type)) return false;
+    if (n->kind == N_INT)
+        return range_fits(n, (__int128)n->ival, (__int128)n->ival, lo, hi);
+    if (n->kind == N_IDENT && n->sym) {
+        if (n->sym->kind == S_CONST && n->sym->cv.kind == 1)
+            return range_fits(n, n->sym->cv.i, n->sym->cv.i, lo, hi);
+        RangeFact *fact = find_range(n->sym);
+        if (fact) return range_fits(n, fact->lo, fact->hi, lo, hi);
+        return false;
+    }
+    if (n->kind == N_UNARY && n->op == TK_MINUS) {
+        int64_t a, b;
+        if (!range_expr(n->a, &a, &b)) return false;
+        return range_fits(n, -(__int128)b, -(__int128)a, lo, hi);
+    }
+    if (n->kind != N_BINARY) return false;
+    int64_t alo, ahi, blo, bhi;
+    if (!range_expr(n->a, &alo, &ahi) || !range_expr(n->b, &blo, &bhi)) return false;
+    __int128 low, high;
+    if (n->op == TK_PLUS) {
+        low = (__int128)alo + blo;
+        high = (__int128)ahi + bhi;
+    } else if (n->op == TK_MINUS) {
+        low = (__int128)alo - bhi;
+        high = (__int128)ahi - blo;
+    } else if (n->op == TK_STAR) {
+        __int128 p[4] = {
+            (__int128)alo * blo, (__int128)alo * bhi,
+            (__int128)ahi * blo, (__int128)ahi * bhi
+        };
+        low = high = p[0];
+        for (int i = 1; i < 4; i++) {
+            if (p[i] < low) low = p[i];
+            if (p[i] > high) high = p[i];
+        }
+    } else return false;
+    return range_fits(n, low, high, lo, hi);
+}
+
+static bool array_index_proven(Node *idx, int64_t len) {
+    int64_t lo, hi;
+    return len > 0 && range_expr(idx, &lo, &hi) && lo >= 0 && hi < len;
 }
 
 // ------------------------------------------------------------------ variables
@@ -594,7 +657,7 @@ static Addr lw_addr(Node *n) {
             base = flatten(lw_addr(n->a));
             idx = lw_scalar(n->b);
             if (idx.k == O_IMM) { base.off += idx.v * esz; return base; }
-            check_bounds(idx, I(bt->len), n->pos.line);
+            if (!array_index_proven(n->b, bt->len)) check_bounds(idx, I(bt->len), n->pos.line);
         } else if (bt->kind == TY_PTR) {
             base = areg(to_reg(lw_scalar(n->a)), 0);
             idx = lw_scalar(n->b);
@@ -1132,6 +1195,18 @@ static void lw_for(Node *n) {
         Type *t = s->type;
         Opnd lo = lw_scalar(n->a);
         Opnd hi = lw_scalar(n->b);
+        bool have_range = false;
+        int64_t range_lo = 0, range_hi = 0;
+        if (!s->addr_taken && ty_is_int(t) && ty_is_signed(t) &&
+            lo.k == O_IMM && hi.k == O_IMM &&
+            int_fits_type(t, lo.v) && int_fits_type(t, hi.v)) {
+            if (n->flag && lo.v <= hi.v &&
+                int_fits_type(t, (__int128)hi.v + 1)) {
+                range_lo = lo.v; range_hi = hi.v; have_range = true;
+            } else if (!n->flag && lo.v < hi.v) {
+                range_lo = lo.v; range_hi = hi.v - 1; have_range = true;
+            }
+        }
         int hr = hi.k == O_IMM ? -1 : fresh_copy(hi, 0);
         Opnd hiop = hr < 0 ? hi : R(hr);
         int ctr = nreg(0);
@@ -1141,7 +1216,12 @@ static void lw_for(Node *n) {
         label(lbody);
         if (s->loc == L_SLOT) store_scalar(aslot(s->slot), R(ctr), t);
         vpush(G.loops, lp);
+        if (have_range) {
+            RangeFact fact = { s, range_lo, range_hi };
+            vpush(G.ranges, fact);
+        }
         lw_block(n->c);
+        if (have_range) G.ranges.n--;
         G.loops.n--;
         label(lcont);
         Ins *inc = emit(OP_ADD); inc->dst = ctr; inc->a = R(ctr); inc->b = I(1);
@@ -1164,7 +1244,17 @@ static void lw_for(Node *n) {
     mov(ctr, I(0));
     Sym *iv = n->name2 ? n->sym : NULL;
     Sym *ev = n->sym2;
-    if (iv) bind_loop_var(iv, NULL, ctr);
+    bool have_index_range = false;
+    int64_t index_hi = 0;
+    if (iv) {
+        bind_loop_var(iv, NULL, ctr);
+        if (it->kind == TY_ARRAY && it->len > 0 && !iv->addr_taken &&
+            ty_is_int(iv->type) && ty_is_signed(iv->type) &&
+            int_fits_type(iv->type, it->len - 1)) {
+            index_hi = it->len - 1;
+            have_index_range = true;
+        }
+    }
     int esz = type_size(et);
     jmp(lcond);
     label(lbody);
@@ -1186,7 +1276,12 @@ static void lw_for(Node *n) {
         } else emit_copy(aslot(ev->slot), ea, esz);
     }
     vpush(G.loops, lp);
+    if (have_index_range) {
+        RangeFact fact = { iv, 0, index_hi };
+        vpush(G.ranges, fact);
+    }
     lw_block(n->c);
+    if (have_index_range) G.ranges.n--;
     G.loops.n--;
     label(lcont);
     { Ins *inc = emit(OP_ADD); inc->dst = ctr; inc->a = R(ctr); inc->b = I(1); }
