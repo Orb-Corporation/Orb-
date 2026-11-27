@@ -25,6 +25,8 @@ jobs:
         run: make
       - name: Native regression tests
         run: make test
+      - name: Differential compiler fuzzing
+        run: python3 tests/fuzz.py 500 1
       - name: WebAssembly regression tests
         run: make test-wasm
       - name: Install Chromium test runner
