@@ -21,7 +21,10 @@ for f in tests/ok/*.orb; do
     for mode in "" "--no-opt" "--unchecked"; do
         $ORB build $f $mode -o $TEST_EXE 2> $tmp/err.txt || { bad "$f [$mode] (compile)" "$(head -3 $tmp/err.txt)"; continue; }
         $TEST_EXE < $input > $tmp/out.txt 2> $tmp/stderr.txt
-        if cmp -s $tmp/out.txt "$expected"; then ok; else bad "$f [$mode] (output differs)" "$(diff $tmp/out.txt $expected | head -3)"; fi
+        # Windows runtimes emit CRLF; compare text output independent of line endings.
+        sed 's/\r$//' "$tmp/out.txt" > "$tmp/out-normalized.txt"
+        sed 's/\r$//' "$expected" > "$tmp/expected-normalized.txt"
+        if cmp -s "$tmp/out-normalized.txt" "$tmp/expected-normalized.txt"; then ok; else bad "$f [$mode] (output differs)" "$(diff "$tmp/out-normalized.txt" "$tmp/expected-normalized.txt" | head -3)"; fi
     done
 done
 
